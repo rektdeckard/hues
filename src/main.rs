@@ -1,21 +1,60 @@
-use hues::{api::V2, Bridge, Light};
+use std::time::Duration;
+
+use hues::{
+    api::{Version, V2},
+    Bridge, Light,
+};
 
 #[tokio::main]
 async fn main() {
-    // This is running on a core thread.
+    // DISCOVERY WITH KEY
+    // {
+    //     let mut bridge = Bridge::discover()
+    //         .await
+    //         .unwrap()
+    //         .app_key("bbo7vyG7EYdJXIadZaCGtR1SpD969RXs8FohDm1a")
+    //         .version(Version::V2)
+    //         // .heartbeat(Duration::from_secs(15))
+    //         .build();
+    // }
 
-    let bridge = Bridge::with_addr(std::net::Ipv4Addr::new(10, 0, 0, 190))
-        .heartbeat(std::time::Duration::from_secs(30));
+    // DISCOVERY CERATE KEY
+    // let mut bridge = Bridge::discover()
+    //     .await
+    //     .unwrap()
+    //     .build()
+    //     .create_app("magic", "the_gathering")
+    //     .await
+    //     .unwrap();
 
-    let bridge = Bridge::discover().await.unwrap();
+    // PRE-EXISTING ADDR AND KEY
+    let mut bridge = Bridge::new(
+        [10u8, 0, 0, 190],
+        "X9UK9xxNDdokkc1pVkqIarALyvjL5vJr8lQMeHs5",
+    );
 
-    let blocking_task = tokio::task::spawn_blocking(|| {
-        // This is running on a blocking thread.
-        // Blocking here is ok.
-    });
+    // let light_ids: Vec<String> = bridge
+    //     .lights()
+    //     .await
+    //     .unwrap()
+    //     .keys()
+    //     .map(String::to_owned)
+    //     .collect();
 
-    // We can wait for the blocking task like this:
-    // If the blocking task panics, the unwrap below will propagate the
-    // panic.
-    blocking_task.await.unwrap();
+    // dbg!(&light_ids);
+
+    // let _ = bridge
+    //     .command()
+    //     .identify(light_ids.iter().nth(0).unwrap())
+    //     .identify(light_ids.iter().nth(1).unwrap())
+    //     .identify(light_ids.iter().nth(2).unwrap())
+    //     .send()
+    //     .await;
+
+    for (id, light) in bridge.lights().await.unwrap() {
+        let _ = light.command().off().send().await;
+        std::thread::sleep(Duration::from_secs(2));
+        let _ = light.command().off().send().await;
+        std::thread::sleep(Duration::from_secs(2));
+    }
 }

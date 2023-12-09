@@ -1,0 +1,392 @@
+{
+  "errors": [],
+  "data": [
+    {
+      "id": "509c0477-a1c3-44de-b797-03f528c902b2",
+      "id_v1": "/lights/3",
+      "owner": {
+        "rid": "f8d139e3-63c5-4a78-a0be-31b72c7890be",
+        "rtype": "device"
+      },
+      "metadata": {
+        "name": "Ceiling 2",
+        "archetype": "sultan_bulb",
+        "function": "mixed"
+      },
+      "product_data": { "function": "mixed" },
+      "identify": {},
+      "on": { "on": true },
+      "dimming": { "brightness": 77.87, "min_dim_level": 1.0 },
+      "dimming_delta": {},
+      "color_temperature": {
+        "mirek": null,
+        "mirek_valid": false,
+        "mirek_schema": { "mirek_minimum": 153, "mirek_maximum": 500 }
+      },
+      "color_temperature_delta": {},
+      "color": {
+        "xy": { "x": 0.2299, "y": 0.0862 },
+        "gamut": {
+          "red": { "x": 0.6915, "y": 0.3083 },
+          "green": { "x": 0.17, "y": 0.7 },
+          "blue": { "x": 0.1532, "y": 0.0475 }
+        },
+        "gamut_type": "C"
+      },
+      "dynamics": {
+        "status": "none",
+        "status_values": ["none", "dynamic_palette"],
+        "speed": 0.0,
+        "speed_valid": false
+      },
+      "alert": { "action_values": ["breathe"] },
+      "signaling": {
+        "signal_values": ["no_signal", "on_off", "on_off_color", "alternating"]
+      },
+      "mode": "normal",
+      "effects": {
+        "status_values": ["no_effect", "candle", "fire", "prism"],
+        "status": "no_effect",
+        "effect_values": ["no_effect", "candle", "fire", "prism"]
+      },
+      "powerup": {
+        "preset": "safety",
+        "configured": true,
+        "on": { "mode": "on", "on": { "on": true } },
+        "dimming": { "mode": "dimming", "dimming": { "brightness": 100.0 } },
+        "color": {
+          "mode": "color_temperature",
+          "color_temperature": { "mirek": 366 }
+        }
+      },
+      "type": "light"
+    },
+    {
+      "id": "1e84f1c6-71ca-4166-ad3e-034815160617",
+      "id_v1": "/lights/8",
+      "owner": {
+        "rid": "e33e59d1-e7f9-4328-a272-bf98e9f4a43d",
+        "rtype": "device"
+      },
+      "metadata": {
+        "name": "Spot 2",
+        "archetype": "spot_bulb",
+        "function": "functional"
+      },
+      "product_data": { "function": "functional" },
+      "identify": {},
+      "on": { "on": true },
+      "dimming": { "brightness": 77.87, "min_dim_level": 1.0 },
+      "dimming_delta": {},
+      "color_temperature": {
+        "mirek": 400,
+        "mirek_valid": true,
+        "mirek_schema": { "mirek_minimum": 153, "mirek_maximum": 454 }
+      },
+      "color_temperature_delta": {},
+      "dynamics": {
+        "status": "none",
+        "status_values": ["none"],
+        "speed": 0.0,
+        "speed_valid": false
+      },
+      "alert": { "action_values": ["breathe"] },
+      "signaling": { "signal_values": ["no_signal", "on_off"] },
+      "mode": "normal",
+      "effects": {
+        "status_values": ["no_effect", "candle"],
+        "status": "no_effect",
+        "effect_values": ["no_effect", "candle"]
+      },
+      "powerup": {
+        "preset": "safety",
+        "configured": true,
+        "on": { "mode": "on", "on": { "on": true } },
+        "dimming": { "mode": "dimming", "dimming": { "brightness": 100.0 } },
+        "color": {
+          "mode": "color_temperature",
+          "color_temperature": { "mirek": 366 }
+        }
+      },
+      "type": "light"
+    },
+    {
+      "id": "2aaa6432-d225-4beb-aed7-16bd1fa1d287",
+      "id_v1": "/lights/11",
+      "owner": {
+        "rid": "7b24d685-f72d-4bb3-b15d-b413058eb174",
+        "rtype": "device"
+      },
+      "metadata": {
+        "name": "Ceiling 3",
+        "archetype": "sultan_bulb",
+        "function": "mixed"
+      },
+      "product_data": { "function": "mixed" },
+      "identify": {},
+      "on": { "on": true },
+      "dimming": { "brightness": 77.87, "min_dim_level": 1.0 },
+      "dimming_delta": {},
+      "color_temperature": {
+        "mirek": null,
+        "mirek_valid": false,
+        "mirek_schema": { "mirek_minimum": 153, "mirek_maximum": 500 }
+      },
+      "color_temperature_delta": {},
+      "color": {
+        "xy": { "x": 0.2299, "y": 0.0862 },
+        "gamut": {
+          "red": { "x": 0.6915, "y": 0.3083 },
+          "green": { "x": 0.17, "y": 0.7 },
+          "blue": { "x": 0.1532, "y": 0.0475 }
+        },
+        "gamut_type": "C"
+      },
+      "dynamics": {
+        "status": "none",
+        "status_values": ["none", "dynamic_palette"],
+        "speed": 0.0,
+        "speed_valid": false
+      },
+      "alert": { "action_values": ["breathe"] },
+      "signaling": {
+        "signal_values": ["no_signal", "on_off", "on_off_color", "alternating"]
+      },
+      "mode": "normal",
+      "effects": {
+        "status_values": ["no_effect", "candle", "fire", "prism"],
+        "status": "no_effect",
+        "effect_values": ["no_effect", "candle", "fire", "prism"]
+      },
+      "powerup": {
+        "preset": "safety",
+        "configured": true,
+        "on": { "mode": "on", "on": { "on": true } },
+        "dimming": { "mode": "dimming", "dimming": { "brightness": 100.0 } },
+        "color": {
+          "mode": "color_temperature",
+          "color_temperature": { "mirek": 366 }
+        }
+      },
+      "type": "light"
+    },
+    {
+      "id": "c75112fc-6727-46f7-8fe9-cf64021c1a16",
+      "id_v1": "/lights/10",
+      "owner": {
+        "rid": "9dc569b3-c7b8-4323-9423-6929e1d7ef73",
+        "rtype": "device"
+      },
+      "metadata": {
+        "name": "Ceiling 4",
+        "archetype": "sultan_bulb",
+        "function": "mixed"
+      },
+      "product_data": { "function": "mixed" },
+      "identify": {},
+      "on": { "on": true },
+      "dimming": { "brightness": 77.87, "min_dim_level": 1.0 },
+      "dimming_delta": {},
+      "color_temperature": {
+        "mirek": null,
+        "mirek_valid": false,
+        "mirek_schema": { "mirek_minimum": 153, "mirek_maximum": 500 }
+      },
+      "color_temperature_delta": {},
+      "color": {
+        "xy": { "x": 0.1783, "y": 0.1212 },
+        "gamut": {
+          "red": { "x": 0.6915, "y": 0.3083 },
+          "green": { "x": 0.17, "y": 0.7 },
+          "blue": { "x": 0.1532, "y": 0.0475 }
+        },
+        "gamut_type": "C"
+      },
+      "dynamics": {
+        "status": "none",
+        "status_values": ["none", "dynamic_palette"],
+        "speed": 0.0,
+        "speed_valid": false
+      },
+      "alert": { "action_values": ["breathe"] },
+      "signaling": {
+        "signal_values": ["no_signal", "on_off", "on_off_color", "alternating"]
+      },
+      "mode": "normal",
+      "effects": {
+        "status_values": ["no_effect", "candle", "fire", "prism"],
+        "status": "no_effect",
+        "effect_values": ["no_effect", "candle", "fire", "prism"]
+      },
+      "powerup": {
+        "preset": "safety",
+        "configured": true,
+        "on": { "mode": "on", "on": { "on": true } },
+        "dimming": { "mode": "dimming", "dimming": { "brightness": 100.0 } },
+        "color": {
+          "mode": "color_temperature",
+          "color_temperature": { "mirek": 366 }
+        }
+      },
+      "type": "light"
+    },
+    {
+      "id": "7b5d3a37-b09c-4295-9247-3d9d87154118",
+      "id_v1": "/lights/9",
+      "owner": {
+        "rid": "9b4b746c-ff0f-45ad-b9b6-10951a388b19",
+        "rtype": "device"
+      },
+      "metadata": {
+        "name": "Spot 3",
+        "archetype": "spot_bulb",
+        "function": "functional"
+      },
+      "product_data": { "function": "functional" },
+      "identify": {},
+      "on": { "on": true },
+      "dimming": { "brightness": 77.87, "min_dim_level": 1.0 },
+      "dimming_delta": {},
+      "color_temperature": {
+        "mirek": 400,
+        "mirek_valid": true,
+        "mirek_schema": { "mirek_minimum": 153, "mirek_maximum": 454 }
+      },
+      "color_temperature_delta": {},
+      "dynamics": {
+        "status": "none",
+        "status_values": ["none"],
+        "speed": 0.0,
+        "speed_valid": false
+      },
+      "alert": { "action_values": ["breathe"] },
+      "signaling": { "signal_values": ["no_signal", "on_off"] },
+      "mode": "normal",
+      "effects": {
+        "status_values": ["no_effect", "candle"],
+        "status": "no_effect",
+        "effect_values": ["no_effect", "candle"]
+      },
+      "powerup": {
+        "preset": "safety",
+        "configured": true,
+        "on": { "mode": "on", "on": { "on": true } },
+        "dimming": { "mode": "dimming", "dimming": { "brightness": 100.0 } },
+        "color": {
+          "mode": "color_temperature",
+          "color_temperature": { "mirek": 366 }
+        }
+      },
+      "type": "light"
+    },
+    {
+      "id": "1e2c0843-88f1-45ad-b182-f78a375e0ea9",
+      "id_v1": "/lights/4",
+      "owner": {
+        "rid": "a0e44a45-ca8d-4ec7-a777-29728cfe4fdc",
+        "rtype": "device"
+      },
+      "metadata": {
+        "name": "Ceiling 1",
+        "archetype": "sultan_bulb",
+        "function": "mixed"
+      },
+      "product_data": { "function": "mixed" },
+      "identify": {},
+      "on": { "on": true },
+      "dimming": { "brightness": 77.87, "min_dim_level": 1.0 },
+      "dimming_delta": {},
+      "color_temperature": {
+        "mirek": null,
+        "mirek_valid": false,
+        "mirek_schema": { "mirek_minimum": 153, "mirek_maximum": 500 }
+      },
+      "color_temperature_delta": {},
+      "color": {
+        "xy": { "x": 0.5403, "y": 0.4219 },
+        "gamut": {
+          "red": { "x": 0.6915, "y": 0.3083 },
+          "green": { "x": 0.17, "y": 0.7 },
+          "blue": { "x": 0.1532, "y": 0.0475 }
+        },
+        "gamut_type": "C"
+      },
+      "dynamics": {
+        "status": "none",
+        "status_values": ["none", "dynamic_palette"],
+        "speed": 0.0,
+        "speed_valid": false
+      },
+      "alert": { "action_values": ["breathe"] },
+      "signaling": {
+        "signal_values": ["no_signal", "on_off", "on_off_color", "alternating"]
+      },
+      "mode": "normal",
+      "effects": {
+        "status_values": ["no_effect", "candle", "fire", "prism"],
+        "status": "no_effect",
+        "effect_values": ["no_effect", "candle", "fire", "prism"]
+      },
+      "powerup": {
+        "preset": "safety",
+        "configured": true,
+        "on": { "mode": "on", "on": { "on": true } },
+        "dimming": { "mode": "dimming", "dimming": { "brightness": 100.0 } },
+        "color": {
+          "mode": "color_temperature",
+          "color_temperature": { "mirek": 366 }
+        }
+      },
+      "type": "light"
+    },
+    {
+      "id": "120b6f18-b912-4211-bb91-038bbfdc918c",
+      "id_v1": "/lights/7",
+      "owner": {
+        "rid": "fe2df948-574a-411f-b4e9-c424949216c1",
+        "rtype": "device"
+      },
+      "metadata": {
+        "name": "Spot 1",
+        "archetype": "spot_bulb",
+        "function": "functional"
+      },
+      "product_data": { "function": "functional" },
+      "identify": {},
+      "on": { "on": true },
+      "dimming": { "brightness": 77.87, "min_dim_level": 1.0 },
+      "dimming_delta": {},
+      "color_temperature": {
+        "mirek": 400,
+        "mirek_valid": true,
+        "mirek_schema": { "mirek_minimum": 153, "mirek_maximum": 454 }
+      },
+      "color_temperature_delta": {},
+      "dynamics": {
+        "status": "none",
+        "status_values": ["none"],
+        "speed": 0.0,
+        "speed_valid": false
+      },
+      "alert": { "action_values": ["breathe"] },
+      "signaling": { "signal_values": ["no_signal", "on_off"] },
+      "mode": "normal",
+      "effects": {
+        "status_values": ["no_effect", "candle"],
+        "status": "no_effect",
+        "effect_values": ["no_effect", "candle"]
+      },
+      "powerup": {
+        "preset": "safety",
+        "configured": true,
+        "on": { "mode": "on", "on": { "on": true } },
+        "dimming": { "mode": "dimming", "dimming": { "brightness": 100.0 } },
+        "color": {
+          "mode": "color_temperature",
+          "color_temperature": { "mirek": 366 }
+        }
+      },
+      "type": "light"
+    }
+  ]
+}
