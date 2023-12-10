@@ -1,13 +1,10 @@
-use crate::api::{self, HueAPI, HueAPIError, Version, V2};
+use crate::api::{self, HueAPIError, Version, V2};
 use crate::command::{CommandBuilder, CommandType};
 use crate::group::Group;
 use crate::light::Light;
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use std::{
-    net::{IpAddr, Ipv4Addr},
-    time::Duration,
-};
+use std::{net::IpAddr, time::Duration};
 
 #[derive(Debug)]
 pub enum BridgeDiscoveryError {
@@ -46,7 +43,7 @@ impl<'a> Bridge<'a> {
     }
 
     pub async fn create_app(
-        mut self,
+        &mut self,
         app_name: impl Into<String>,
         instance_name: impl Into<String>,
     ) -> Result<String, HueAPIError> {

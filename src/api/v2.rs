@@ -1,7 +1,5 @@
 use super::v1::RegisterResponse;
-use super::{HueAPI, HueAPIError, HueAPIV2Response, LightGet};
-use crate::command::CommandType;
-use crate::light::Light;
+use super::{HueAPIError, HueAPIResponse, LightGet, ResourceIdentifier};
 use reqwest::Client;
 use serde_json::json;
 use std::net::IpAddr;
@@ -15,7 +13,7 @@ pub struct V2 {
 }
 
 impl V2 {
-    pub fn new(addr: impl Into<IpAddr>, app_key: impl Into<String>) -> Self {
+    pub(crate) fn new(addr: impl Into<IpAddr>, app_key: impl Into<String>) -> Self {
         V2 {
             addr: addr.into(),
             app_key: app_key.into(),
@@ -27,11 +25,11 @@ impl V2 {
         }
     }
 
-    pub fn addr(&self) -> String {
+    pub(crate) fn addr(&self) -> String {
         self.addr.to_string().clone()
     }
 
-    pub async fn create_app(
+    pub(crate) async fn create_app(
         &mut self,
         app_name: impl Into<String>,
         instance_name: impl Into<String>,
@@ -53,9 +51,9 @@ impl V2 {
                         Err(HueAPIError::HueBridgeError(error.description.clone()))
                     }
                 },
-                Err(_) => Err(HueAPIError::BadDeserialize),
+                _ => Err(HueAPIError::BadDeserialize),
             },
-            Err(_) => Err(HueAPIError::BadRequest),
+            _ => Err(HueAPIError::BadRequest),
         }
     }
 
@@ -66,12 +64,12 @@ impl V2 {
     fn api_v1_url(&self) -> String {
         format!("https://{}/api", &self.addr)
     }
-}
 
-impl HueAPI for V2 {
-    async fn identify_light(&self, id: impl Into<String>) -> Result<(), HueAPIError> {
+    pub(crate) async fn identify_light(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let id = id.into();
-        dbg!(self.api_url() + "/resource/light/" + &id);
         match self
             .client
             .put(self.api_url() + "/resource/light/" + &id)
@@ -81,36 +79,58 @@ impl HueAPI for V2 {
             .send()
             .await
         {
-            Ok(response) => {
-                dbg!(response.text().await);
-                Ok(())
+            Ok(res) => {
+                return match res.json::<HueAPIResponse<Vec<ResourceIdentifier>>>().await {
+                    Ok(res) => {
+                        if res.errors.is_empty() {
+                            Ok(res.data)
+                        } else {
+                            Err(HueAPIError::HueBridgeError(
+                                res.errors[0].description.clone(),
+                            ))
+                        }
+                    }
+                    _ => Err(HueAPIError::BadDeserialize),
+                }
             }
-            Err(e) => Err(HueAPIError::BadRequest),
+            _ => Err(HueAPIError::BadRequest),
         }
     }
 
-    async fn modify_light(&self, id: impl Into<String>, commands: &[CommandType::]) -> Result<(), HueAPIError> {
+    pub(crate) async fn update_light(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let id = id.into();
-        dbg!(self.api_url() + "/resource/light/" + &id);
         match self
             .client
             .put(self.api_url() + "/resource/light/" + &id)
             .header("hue-application-key", &self.app_key)
-            .json(&json!({ "identify": { "action": "identify" } }))
+            .json(payload)
             // .json(&json!({ "on": { "on": true } }))
             .send()
             .await
         {
-            Ok(response) => {
-                dbg!(response.text().await);
-                Ok(())
+            Ok(res) => {
+                return match res.json::<HueAPIResponse<Vec<ResourceIdentifier>>>().await {
+                    Ok(res) => {
+                        if res.errors.is_empty() {
+                            Ok(res.data)
+                        } else {
+                            Err(HueAPIError::HueBridgeError(
+                                res.errors[0].description.clone(),
+                            ))
+                        }
+                    }
+                    _ => Err(HueAPIError::BadDeserialize),
+                }
             }
-            Err(e) => Err(HueAPIError::BadRequest),
+            _ => Err(HueAPIError::BadRequest),
         }
     }
 
-    async fn get_lights(&self) -> Result<HueAPIV2Response<Vec<LightGet>>, HueAPIError> {
-        dbg!(self.api_url() + "/resource/light");
+    pub(crate) async fn get_lights(&self) -> Result<HueAPIResponse<Vec<LightGet>>, HueAPIError> {
         match self
             .client
             .get(self.api_url() + "/resource/light")
@@ -118,19 +138,11 @@ impl HueAPI for V2 {
             .send()
             .await
         {
-            Ok(response) => match response.json::<HueAPIV2Response<Vec<LightGet>>>().await {
-                Ok(d) => {
-                    // dbg!(&d);
-                    return Ok(d);
-                }
-                Err(e) => {
-                    panic!("{}", e)
-                }
-            },
-            Err(e) => {
-                panic!("{}", e);
-                Err(HueAPIError::BadRequest)
-            }
+            Ok(res) => res
+                .json::<HueAPIResponse<Vec<LightGet>>>()
+                .await
+                .map_err(|_| HueAPIError::BadDeserialize),
+            _ => Err(HueAPIError::BadRequest),
         }
     }
 }

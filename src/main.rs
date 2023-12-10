@@ -1,37 +1,12 @@
-use std::time::Duration;
-
 use hues::{
-    api::{Version, V2},
-    Bridge, Light,
+    api::{SignalType, Version, XYGamut},
+    Bridge, LightCommand, SignalColor,
 };
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() {
-    // DISCOVERY WITH KEY
-    // {
-    //     let mut bridge = Bridge::discover()
-    //         .await
-    //         .unwrap()
-    //         .app_key("bbo7vyG7EYdJXIadZaCGtR1SpD969RXs8FohDm1a")
-    //         .version(Version::V2)
-    //         // .heartbeat(Duration::from_secs(15))
-    //         .build();
-    // }
-
-    // DISCOVERY CERATE KEY
-    // let mut bridge = Bridge::discover()
-    //     .await
-    //     .unwrap()
-    //     .build()
-    //     .create_app("magic", "the_gathering")
-    //     .await
-    //     .unwrap();
-
-    // PRE-EXISTING ADDR AND KEY
-    let mut bridge = Bridge::new(
-        [10u8, 0, 0, 190],
-        "X9UK9xxNDdokkc1pVkqIarALyvjL5vJr8lQMeHs5",
-    );
+    let mut bridge = preexisting_ip_and_key().await;
 
     // let light_ids: Vec<String> = bridge
     //     .lights()
@@ -51,10 +26,45 @@ async fn main() {
     //     .send()
     //     .await;
 
-    for (id, light) in bridge.lights().await.unwrap() {
-        let _ = light.command().off().send().await;
-        std::thread::sleep(Duration::from_secs(2));
-        let _ = light.command().off().send().await;
-        std::thread::sleep(Duration::from_secs(2));
+    for (_id, light) in bridge.lights().await.unwrap() {
+        // if light.data.color.is_some() {
+        // let _ = light
+        //     .send(&[LightCommand::PowerUp {
+        //         preset: hues::api::PowerupPresetType::LastOnState,
+        //         on: None,
+        //         dimming: None,
+        //         color: None,
+        //     }])
+        //     .await;
+        // } else {
+        // }
+        // std::thread::sleep(Duration::from_secs(1));
+        let r = light
+            .send(&[LightCommand::Effect(hues::api::EffectType::Candle)])
+            .await;
+        dbg!(r);
     }
+}
+
+async fn preexisting_ip_and_key<'a>() -> Bridge<'a> {
+    Bridge::new(
+        [10u8, 0, 0, 190],
+        "X9UK9xxNDdokkc1pVkqIarALyvjL5vJr8lQMeHs5",
+    )
+}
+
+async fn discover_with_key<'a>() -> Bridge<'a> {
+    Bridge::discover()
+        .await
+        .unwrap()
+        .app_key("bbo7vyG7EYdJXIadZaCGtR1SpD969RXs8FohDm1a")
+        .version(Version::V2)
+        // .heartbeat(Duration::from_secs(15))
+        .build()
+}
+
+async fn discover_create_key<'a>() -> Bridge<'a> {
+    let mut bridge = Bridge::discover().await.unwrap().build();
+    let _ = &bridge.create_app("magic", "the_gathering").await;
+    bridge
 }

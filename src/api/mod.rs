@@ -2,18 +2,12 @@ mod v1;
 mod v2;
 
 use crate::device;
-use crate::light::Light;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 pub use v2::V2;
 
-pub trait HueAPI {
-    async fn identify_light(&self, id: impl Into<String>) -> Result<(), HueAPIError>;
-    async fn get_lights(&self) -> Result<HueAPIV2Response<Vec<LightGet>>, HueAPIError>;
-}
-
 #[derive(Debug, Deserialize)]
-pub struct HueAPIV2Response<D> {
+pub struct HueAPIResponse<D> {
     pub(crate) errors: Vec<HueAPIV2Error>,
     pub(crate) data: D,
 }
@@ -42,40 +36,40 @@ pub struct HueAPIV2Error {
 pub struct LightGet {
     /// Type of the supported resource.
     #[serde(rename = "type")]
-    device_type: device::Device,
+    pub device_type: device::Device,
     /// Unique identifier representing a specific resource instance.
     pub id: String,
     /// Clip v1 resource identifier.
-    id_v1: Option<String>,
+    pub id_v1: Option<String>,
     /// Owner of the service, in case the owner service is deleted, the service also gets deleted.
-    owner: ResourceIdentifier,
+    pub owner: ResourceIdentifier,
     /// Deprecated: use metadata on device level.
-    metadata: Metadata,
-    on: OnState,
-    dimming: DimmingState,
-    color_temperature: ColorTempState,
-    color: Option<ColorState>,
-    dynamics: DynamicsState,
-    alert: AlertState,
+    pub metadata: Metadata,
+    pub on: OnState,
+    pub dimming: DimmingState,
+    pub color_temperature: ColorTempState,
+    pub color: Option<ColorState>,
+    pub dynamics: DynamicsState,
+    pub alert: AlertState,
     /// Feature containing signaling properties.
-    signaling: SignalingState,
-    mode: Mode,
+    pub signaling: SignalingState,
+    pub mode: Mode,
     /// Basic feature containing gradient properties.
-    gradient: Option<GradientState>,
+    pub gradient: Option<GradientState>,
     /// Basic feature containing effect properties.
-    effects: Option<EffectState>,
+    pub effects: Option<EffectState>,
     /// Basic feature containing timed effect properties.
-    timed_effects: Option<TimedEffectState>,
+    pub timed_effects: Option<TimedEffectState>,
     /// Feature containing properties to configure powerup behaviour of a lightsource.
-    powerup: Option<PowerupState>,
+    pub powerup: Option<PowerupState>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ResourceIdentifier {
     /// The unique id of the referenced resource.
-    rid: String,
+    pub rid: String,
     /// The type of the referenced resource.
-    rtype: ResourceType,
+    pub rtype: ResourceType,
 }
 
 #[derive(Debug, Deserialize)]
@@ -121,11 +115,11 @@ pub enum ResourceType {
 #[derive(Debug, Deserialize)]
 pub struct Metadata {
     /// Human readable name of a resource.
-    name: String,
+    pub name: String,
     /// Light archetype
-    archetype: LightArchetype,
+    pub archetype: LightArchetype,
     /// A fixed mired value of the white lamp.
-    fixed_mired: Option<u16>,
+    pub fixed_mired: Option<u16>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -184,13 +178,13 @@ pub enum LightArchetype {
     CeilingTube,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct OnState {
     /// On/Off state of the light
     ///
     /// on=true
     /// off=false.
-    on: bool,
+    pub on: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -198,40 +192,40 @@ pub struct DimmingState {
     /// Brightness percentage.
     ///
     /// Value cannot be 0, writing 0 changes it to lowest possible brightness.
-    brightness: f32,
+    pub brightness: f32,
     /// Percentage of the maximum lumen the device outputs on minimum brightness.
-    min_dim_level: Option<f32>,
+    pub min_dim_level: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ColorTempState {
     /// Color temperature in mirek or None when the light color is not in the ct spectrum.
-    mirek: Option<u16>,
+    pub mirek: Option<u16>,
     /// Indication whether the value presented in mirek is valid.
-    mirek_valid: bool,
-    mirek_schema: MirekSchema,
+    pub mirek_valid: bool,
+    pub mirek_schema: MirekSchema,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct MirekSchema {
     /// Minimum color temperature this light supports.
-    mirek_minimum: u16,
+    pub mirek_minimum: u16,
     /// Maximum color temperature this light supports.
-    mirek_maximum: u16,
+    pub mirek_maximum: u16,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ColorState {
     /// CIE XY gamut position
-    xy: XYGamut,
-    gamut: Gamut,
+    pub xy: XYGamut,
+    pub gamut: Gamut,
     /// The gammut types supported by hue.
     ///
     /// – A Gamut of early Philips color-only products
     /// – B Limited gamut of first Hue color products
     /// – C Richer color gamut of Hue white and color ambiance products
     /// – Other Color gamut of non-hue products with non-hue gamuts resp w/o gamut
-    gamut_type: GamutType,
+    pub gamut_type: GamutType,
 }
 
 /// Color gamut of color bulb.
@@ -239,19 +233,19 @@ pub struct ColorState {
 #[derive(Debug, Deserialize)]
 pub struct Gamut {
     /// CIE XY gamut position
-    red: XYGamut,
+    pub red: XYGamut,
     /// CIE XY gamut position
-    green: XYGamut,
+    pub green: XYGamut,
     /// CIE XY gamut position
-    blue: XYGamut,
+    pub blue: XYGamut,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct XYGamut {
     /// X position in color gamut
-    x: f32,
+    pub x: f32,
     /// Y position in color gamut
-    y: f32,
+    pub y: f32,
 }
 
 /// The gammut types supported by hue
@@ -271,15 +265,15 @@ pub enum GamutType {
 #[derive(Debug, Deserialize)]
 pub struct DynamicsState {
     /// Current status of the lamp with dynamics.
-    status: DynamicsStatus,
+    pub status: DynamicsStatus,
     /// Statuses in which a lamp could be when playing dynamics.
-    status_values: Vec<DynamicsStatus>,
+    pub status_values: Vec<DynamicsStatus>,
     /// Speed of dynamic palette or effect.
-    /// The speed is valid for the dynamic palette if the status is DynamicPalette or for
+    /// The speed is valid for the dynamic palette if the status is [DynamicsStatus::DynamicPalette] or for
     /// the corresponding effect listed in status. In case of status none, the speed is not valid.
-    speed: f32,
+    pub speed: f32,
     /// Indicates whether the value presented in speed is valid
-    speed_valid: bool,
+    pub speed_valid: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -292,10 +286,10 @@ pub enum DynamicsStatus {
 #[derive(Debug, Deserialize)]
 pub struct AlertState {
     /// Alert effects that the light supports.
-    action_values: Vec<AlertEffectType>,
+    pub action_values: Vec<AlertEffectType>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AlertEffectType {
     Breathe,
@@ -304,27 +298,31 @@ pub enum AlertEffectType {
 #[derive(Debug, Deserialize)]
 pub struct SignalingState {
     /// Signals that the light supports.
-    signal_values: Option<Vec<SignalType>>,
+    pub signal_values: Option<Vec<SignalType>>,
     /// Indicates status of active signal. Not available when inactive.
-    status: Option<SignalStatus>,
+    pub status: Option<SignalStatus>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct SignalStatus {
     /// Indicates which signal is currently active.
-    signal: SignalType,
+    pub signal: SignalType,
     /// Timestamp indicating when the active signal is expected to end. Value is not set if there is NoSignal.
-    estimated_end: String,
+    pub estimated_end: String,
     /// Colors that were provided for the active effect.
-    colors: Vec<ColorFeatureBasic>,
+    pub colors: Vec<ColorFeatureBasic>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SignalType {
+    /// Stop active signal.
     NoSignal,
+    /// Toggle between max brightness and off in fixed color.
     OnOff,
+    /// Toggles between off and max brightness with a provided color.
     OnOffColor,
+    /// Alternates between two provided colors.
     Alternating,
 }
 
@@ -339,29 +337,29 @@ pub enum Mode {
 pub struct GradientState {
     /// Collection of gradients points.
     /// For control of the gradient points through a PUT a minimum of 2 points need to be provided.
-    points: Vec<GradientPoint>,
+    pub points: Vec<GradientPoint>,
     /// Mode in which the points are currently being deployed.
     /// If not provided during PUT/POST it will be defaulted to InterpolatedPalette.
-    mode: GradientMode,
+    pub mode: GradientMode,
     /// Modes a gradient device can deploy the gradient palette of colors.
-    mode_values: Vec<GradientMode>,
+    pub mode_values: Vec<GradientMode>,
     /// Number of color points that gradient lamp is capable of showing with gradience.
-    points_capable: usize,
+    pub points_capable: usize,
     /// Number of pixels in the device
-    pixel_count: Option<usize>,
+    pub pixel_count: Option<usize>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct GradientPoint {
-    color: ColorFeatureBasic,
+    pub color: ColorFeatureBasic,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ColorFeatureBasic {
-    xy: XYGamut,
+    pub xy: XYGamut,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GradientMode {
     InterpolatedPalette,
@@ -371,16 +369,16 @@ pub enum GradientMode {
 
 #[derive(Debug, Deserialize)]
 pub struct EffectState {
-    effect: Option<EffectType>,
+    pub effect: Option<EffectType>,
     /// Possible effect values you can set in a light.
-    effect_values: Vec<EffectType>,
+    pub effect_values: Vec<EffectType>,
     /// Current status values the light is in regarding effects.
-    status: EffectType,
+    pub status: EffectType,
     /// Possible status values in which a light could be when playing an effect.
-    status_values: Vec<EffectType>,
+    pub status_values: Vec<EffectType>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EffectType {
     Prism,
@@ -394,21 +392,21 @@ pub enum EffectType {
 
 #[derive(Debug, Deserialize)]
 pub struct TimedEffectState {
-    effect: Option<TimedEffectType>,
+    pub effect: Option<TimedEffectType>,
     /// Possible timed effect values you can set in a light.
-    effect_values: Vec<TimedEffectType>,
+    pub effect_values: Vec<TimedEffectType>,
     /// Current status values the light is in regarding timed effects.
-    status: TimedEffectType,
+    pub status: TimedEffectType,
     /// Possible status values in which a light could be when playing a timed effect.
-    status_values: Vec<TimedEffectType>,
+    pub status_values: Vec<TimedEffectType>,
     /// Duration (ms) is mandatory when timed effect is set except for NoEffect.
     /// Resolution decreases for a larger duration. e.g effects with duration smaller than a minute
     /// will be rounded to a resolution of 1s, while effects with duration larger than an hour
     /// will be arounded up to a resolution of 300s. Duration has a max of 21600000 ms.
-    duration: u32,
+    pub duration: u32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TimedEffectType {
     Sunrise,
@@ -419,14 +417,14 @@ pub enum TimedEffectType {
 pub struct PowerupState {
     /// When setting the [PowerupPresetType::Custom] preset the additional properties can be set.
     /// For all other presets, no other properties can be included.
-    preset: PowerupPresetType,
+    pub preset: PowerupPresetType,
     /// Indicates if the shown values have been configured in the lightsource.
-    configured: bool,
+    pub configured: bool,
     /// State to activate after powerup.
-    on: PowerupOnState,
+    pub on: PowerupOnState,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PowerupPresetType {
     Safety,
@@ -435,14 +433,14 @@ pub enum PowerupPresetType {
     Custom,
 }
 
-/// State to activate after powerup. When setting mode [PowerupOnMode::On], the `on` property must be included.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct PowerupOnState {
-    mode: PowerupOnMode,
-    on: Option<OnState>,
+    /// State to activate after powerup. When setting mode [PowerupOnMode::On], the `on` property must be included.
+    pub mode: PowerupOnMode,
+    pub on: Option<OnState>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PowerupOnMode {
     /// Use the value specified in the [PowerupOnState] `on` property.
