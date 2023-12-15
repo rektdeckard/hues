@@ -44,7 +44,7 @@ impl<'a> Device<'a> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct DeviceData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
@@ -58,7 +58,7 @@ pub struct DeviceData {
     pub services: Vec<ResourceIdentifier>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ProductData {
     /// Unique identification of device model.
     pub model_id: String,
@@ -130,7 +130,7 @@ pub enum ProductArchetype {
     WallSpot,
     WallWasher,
 }
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct DeviceMetadata {
     /// Human readable name of a resource.
     pub name: String,
@@ -138,7 +138,7 @@ pub struct DeviceMetadata {
     pub archetype: ProductArchetype,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct UserTest {
     pub status: UserTestStatus,
     /// Activates or extends user usertest mode of device for 120 seconds.
@@ -147,7 +147,7 @@ pub struct UserTest {
     pub usertest: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum UserTestStatus {
     Set,
@@ -181,7 +181,7 @@ impl DevicePower {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct DevicePowerData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
@@ -192,13 +192,13 @@ pub struct DevicePowerData {
     pub power_state: PowerState,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct PowerState {
     battery_state: Option<BatteryState>,
     battery_level: Option<f32>,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum BatteryState {
     Normal,
@@ -206,7 +206,7 @@ pub enum BatteryState {
     Critical,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum SetStatus {
     Set,

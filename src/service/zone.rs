@@ -108,7 +108,7 @@ impl ZoneBuilder {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ZoneData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
@@ -128,7 +128,7 @@ pub struct ZoneData {
     pub metadata: ZoneMetadata,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ZoneMetadata {
     /// Human readable name of a resource.
     pub name: String,
@@ -136,7 +136,7 @@ pub struct ZoneMetadata {
     pub archetype: ZoneArchetype,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+#[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ZoneArchetype {
     Attic,
@@ -200,7 +200,7 @@ impl Home {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct HomeData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,

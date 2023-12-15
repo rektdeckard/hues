@@ -66,7 +66,7 @@ impl<'a> CameraMotion<'a> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct MotionData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
@@ -80,7 +80,7 @@ pub struct MotionData {
     pub sensitivity: Option<Sensitivity>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct MotionState {
     /// Motion is valid when `motion_report` property is present, invalid when absent.
     #[deprecated]
@@ -88,7 +88,7 @@ pub struct MotionState {
     pub motion_report: Option<MotionReport>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct MotionReport {
     /// Last time the value of this property is changed.
     pub changed: String,
@@ -96,7 +96,7 @@ pub struct MotionReport {
     pub motion: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Sensitivity {
     pub status: SetStatus,
     /// Sensitivity of the sensor. Value in the range `0` to `sensitivity_max`.
@@ -133,7 +133,7 @@ impl<'a> Temperature<'a> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct TemperatureData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
@@ -146,7 +146,7 @@ pub struct TemperatureData {
     pub temperature: TemperatureState,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct TemperatureState {
     #[deprecated]
     pub temperature: f32,
@@ -155,7 +155,7 @@ pub struct TemperatureState {
     pub temperature_report: Option<TemperatureReport>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct TemperatureReport {
     /// Last time the value of this property is changed.
     pub changed: String,
@@ -190,7 +190,7 @@ impl<'a> LightLevel<'a> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct LightLevelData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
@@ -203,7 +203,7 @@ pub struct LightLevelData {
     pub light: LightLevelState,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct LightLevelState {
     #[deprecated]
     pub light_level: usize,
@@ -212,7 +212,7 @@ pub struct LightLevelState {
     pub light_level_report: Option<LightLevelReport>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct LightLevelReport {
     /// Last time the value of this property is changed.
     pub changed: String,

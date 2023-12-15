@@ -40,7 +40,7 @@ impl<'a> ZigbeeConnectivity<'a> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ZigbeeConnectivityData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
@@ -79,7 +79,7 @@ impl ZGPConnectivity {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ZGPConnectivityData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
@@ -126,7 +126,7 @@ impl<'a> ZigbeeDeviceDiscovery<'a> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ZigbeeDeviceDiscoveryData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
@@ -138,14 +138,14 @@ pub struct ZigbeeDeviceDiscoveryData {
     pub status: ZigbeeDeviceDiscoveryStatus,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ZigbeeDeviceDiscoveryStatus {
     Active,
     Ready,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ZigbeeStatus {
     /// The device has been recently been available.
@@ -158,7 +158,7 @@ pub enum ZigbeeStatus {
     UnidirectionalIncoming,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ZigbeeChannelState {
     pub status: SetStatus,
     /// Current value of the zigbee channel.
@@ -166,7 +166,7 @@ pub struct ZigbeeChannelState {
     pub value: Option<ZigbeeChannel>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ZigbeeChannel {
     #[serde(rename = "channel_11")]

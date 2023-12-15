@@ -107,7 +107,7 @@ impl Bridge {
         BridgeBuilder::discover().await
     }
 
-    pub async fn listen(mut self, heartbeat: Duration) -> Self {
+    pub async fn poll(mut self, heartbeat: Duration) -> Self {
         let api = self.api.clone();
         let cache = self.cache.clone();
 
@@ -135,7 +135,7 @@ impl Bridge {
         self
     }
 
-    pub fn unlisten(&mut self) {
+    pub fn unpoll(&mut self) {
         if let Some(handle) = &self.listener {
             handle.abort();
         }
@@ -376,8 +376,7 @@ impl Bridge {
         }
     }
 
-    /// NOTE: Does not seem to be functioning on the bridge.
-    pub async fn refresh(&mut self) -> Result<(), HueAPIError> {
+    pub async fn refresh(&self) -> Result<(), HueAPIError> {
         let data = self.api.get_resources().await?;
         let mut cache = self.cache.lock().expect("could not lock cache");
         Bridge::insert_to_cache(&mut cache, data);
@@ -552,58 +551,52 @@ impl Bridge {
         Ok(res)
     }
 
-    // pub async fn device(&self, id: impl Into<String>) -> Result<&'a Device, HueAPIError> {
-    //     let data = self.api.get_device(id).await?;
-    //     let id = data.id.clone();
-    //     let device = Device::new(&self.api, data);
+    pub async fn device(&self, id: impl Into<String>) -> Option<Device> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .devices
+            .get(&id.into())
+            .map(|data| Device::new(&self.api, data.clone()))
+    }
 
-    //     self.devices.insert(id.clone(), device);
-    //     self.devices
-    //         .get(&id)
-    //         .ok_or_else(|| HueAPIError::BadResponse)
-    // }
+    pub async fn devices(&self) -> Vec<Device> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .devices
+            .iter()
+            .map(|(_, data)| Device::new(&self.api, data.clone()))
+            .collect()
+    }
 
-    // pub async fn devices(&self) -> Result<&'a HashMap<String, Device>, HueAPIError> {
-    //     let data = self.api.get_devices().await?;
-    //     self.devices = data
-    //         .into_iter()
-    //         .map(|dev| (dev.id.clone(), Device::new(&self.api, dev)))
-    //         .collect();
-    //     Ok(&self.devices)
-    // }
+    pub async fn delete_device(
+        &mut self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let res = self.api.delete_device(id).await?;
+        Bridge::delete_from_cache(&mut self.cache.lock().expect("lock cache"), &res);
+        Ok(res)
+    }
 
-    // pub async fn device_power(
-    //     &self,
-    //     id: impl Into<String>,
-    // ) -> Result<&'a DevicePower, HueAPIError> {
-    //     let data = self.api.get_device_power(id).await?;
-    //     let id = data.id.clone();
-    //     let power = DevicePower::new(data);
+    pub async fn device_power(&self, id: impl Into<String>) -> Option<DevicePower> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .power
+            .get(&id.into())
+            .map(|data| DevicePower::new(data.clone()))
+    }
 
-    //     self.power.insert(id.clone(), power);
-    //     self.power.get(&id).ok_or_else(|| HueAPIError::BadResponse)
-    // }
-
-    // pub async fn device_powers(
-    //     &self,
-    // ) -> Result<&'a HashMap<String, DevicePower>, HueAPIError> {
-    //     let data = self.api.get_device_powers().await?;
-    //     self.power = data
-    //         .into_iter()
-    //         .map(|power| (power.id.clone(), DevicePower::new(power)))
-    //         .collect();
-    //     Ok(&self.power)
-    // }
-
-    // pub async fn delete_device(
-    //     &mut self,
-    //     id: impl Into<String>,
-    // ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
-    //     let res = self.api.delete_device(id).await?;
-    //     let ids = res.iter().map(|rid| &rid.rid).collect::<HashSet<_>>();
-    //     self.devices.retain(|id, _| !ids.contains(id));
-    //     Ok(res)
-    // }
+    pub async fn device_powers(&self) -> Vec<DevicePower> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .power
+            .iter()
+            .map(|(_, data)| DevicePower::new(data.clone()))
+            .collect()
+    }
 
     pub fn group(&self, id: impl Into<String>) -> Option<Group> {
         self.cache
@@ -624,23 +617,24 @@ impl Bridge {
             .collect()
     }
 
-    // pub async fn home(&self, id: impl Into<String>) -> Result<&'a Home, HueAPIError> {
-    //     let data = self.api.get_bridge_home(id).await?;
-    //     let id = data.id.clone();
-    //     let home = Home::new(data);
+    pub fn home(&self, id: impl Into<String>) -> Option<Home> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .homes
+            .get(&id.into())
+            .map(|data| Home::new(data.clone()))
+    }
 
-    //     self.homes.insert(id.clone(), home);
-    //     self.homes.get(&id).ok_or_else(|| HueAPIError::BadResponse)
-    // }
-
-    // pub async fn homes(&self) -> Result<&'a HashMap<String, Home>, HueAPIError> {
-    //     let data = self.api.get_bridge_homes().await?;
-    //     self.homes = data
-    //         .into_iter()
-    //         .map(|home| (home.id.clone(), Home::new(home)))
-    //         .collect();
-    //     Ok(&self.homes)
-    // }
+    pub fn homes(&self) -> Vec<Home> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .homes
+            .iter()
+            .map(|(_, data)| Home::new(data.clone()))
+            .collect()
+    }
 
     pub fn light(&self, id: impl Into<String>) -> Option<Light> {
         self.cache
@@ -661,71 +655,85 @@ impl Bridge {
             .collect()
     }
 
-    // pub async fn motion(&self, id: impl Into<String>) -> Result<Motion, HueAPIError> {
-    //     self.api
-    //         .get_motion(id)
-    //         .await
-    //         .and_then(|md| Ok(Motion::new(&self.api, md)))
-    // }
+    pub fn motion(&self, id: impl Into<String>) -> Option<Motion> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .motions
+            .get(&id.into())
+            .map(|data| Motion::new(&self.api, data.clone()))
+    }
 
-    // pub async fn motions(&self) -> Result<Vec<Motion>, HueAPIError> {
-    //     let data = self.api.get_motions().await?;
-    //     Ok(data
-    //         .into_iter()
-    //         .map(|md| Motion::new(&self.api, md))
-    //         .collect())
-    // }
+    pub fn motions(&self) -> Vec<Motion> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .motions
+            .iter()
+            .map(|(_, data)| Motion::new(&self.api, data.clone()))
+            .collect()
+    }
 
-    // pub async fn camera_motion(&self, id: impl Into<String>) -> Result<CameraMotion, HueAPIError> {
-    //     self.api
-    //         .get_motion(id)
-    //         .await
-    //         .and_then(|md| Ok(CameraMotion::new(&self.api, md)))
-    // }
+    pub fn motion_camera(&self, id: impl Into<String>) -> Option<CameraMotion> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .motion_cameras
+            .get(&id.into())
+            .map(|data| CameraMotion::new(&self.api, data.clone()))
+    }
 
-    // pub async fn camera_motions(&self) -> Result<Vec<CameraMotion>, HueAPIError> {
-    //     let data = self.api.get_camera_motions().await?;
-    //     Ok(data
-    //         .into_iter()
-    //         .map(|md| CameraMotion::new(&self.api, md))
-    //         .collect())
-    // }
+    pub fn motion_cameras(&self) -> Vec<CameraMotion> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .motion_cameras
+            .iter()
+            .map(|(_, data)| CameraMotion::new(&self.api, data.clone()))
+            .collect()
+    }
 
-    // pub async fn room(&self, id: impl Into<String>) -> Result<&'a Room, HueAPIError> {
-    //     let data = self.api.get_room(id).await?;
-    //     let id = data.id.clone();
-    //     let room = Room::new(&self.api, data);
+    pub fn room(&self, id: impl Into<String>) -> Option<Room> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .rooms
+            .get(&id.into())
+            .map(|data| Room::new(&self.api, data.clone()))
+    }
 
-    //     self.rooms.insert(id.clone(), room);
-    //     self.rooms.get(&id).ok_or_else(|| HueAPIError::BadResponse)
-    // }
+    pub fn rooms(&self) -> Vec<Room> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .rooms
+            .iter()
+            .map(|(_, data)| Room::new(&self.api, data.clone()))
+            .collect()
+    }
 
-    // pub async fn rooms(&self) -> Result<&'a HashMap<String, Room>, HueAPIError> {
-    //     let res = self.api.get_rooms().await?;
-    //     self.rooms.extend(
-    //         res.into_iter()
-    //             .map(|room| (room.id.clone(), Room::new(&self.api, room))),
-    //     );
-    //     Ok(&self.rooms)
-    // }
+    pub async fn create_room(&self, builder: ZoneBuilder) -> Result<Room, HueAPIError> {
+        let rid = self
+            .api
+            .post_room(serde_json::to_value(builder).unwrap())
+            .await?;
+        let data = self.api.get_room(rid.rid).await?;
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .rooms
+            .insert(data.id.clone(), data.clone());
+        Ok(Room::new(&self.api, data))
+    }
 
-    // pub async fn create_room(&self, builder: ZoneBuilder) -> Result<&'a Room, HueAPIError> {
-    //     let rid = self
-    //         .api
-    //         .post_room(serde_json::to_value(builder).unwrap())
-    //         .await?;
-    //     self.room(rid.rid).await
-    // }
-
-    // pub async fn delete_room(
-    //     &self,
-    //     id: impl Into<String>,
-    // ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
-    //     let res = self.api.delete_room(id).await?;
-    //     let ids = res.iter().map(|rid| &rid.rid).collect::<HashSet<_>>();
-    //     self.rooms.retain(|id, _| !ids.contains(id));
-    //     Ok(res)
-    // }
+    pub async fn delete_room(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let res = self.api.delete_room(id).await?;
+        Bridge::delete_from_cache(&mut self.cache.lock().expect("lock cache"), &res);
+        Ok(res)
+    }
 
     pub fn scene(&self, id: impl Into<String>) -> Option<Scene> {
         self.cache
@@ -771,139 +779,145 @@ impl Bridge {
         Ok(res)
     }
 
-    // pub async fn light_level(
-    //     &self,
-    //     id: impl Into<String>,
-    // ) -> Result<&'a LightLevel, HueAPIError> {
-    //     let data = self.api.get_light_level(id).await?;
-    //     let id = data.id.clone();
-    //     let ll = LightLevel::new(&self.api, data);
+    pub async fn light_level(&self, id: impl Into<String>) -> Option<LightLevel> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .light_levels
+            .get(&id.into())
+            .map(|data| LightLevel::new(&self.api, data.clone()))
+    }
 
-    //     self.light_levels.insert(id.clone(), ll);
-    //     self.light_levels
-    //         .get(&id)
-    //         .ok_or_else(|| HueAPIError::BadResponse)
-    // }
+    pub async fn light_levels(&self) -> Vec<LightLevel> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .light_levels
+            .iter()
+            .map(|(_, data)| LightLevel::new(&self.api, data.clone()))
+            .collect()
+    }
 
-    // pub async fn light_levels(
-    //     &self,
-    // ) -> Result<&'a HashMap<String, LightLevel>, HueAPIError> {
-    //     let data = self.api.get_light_levels().await?;
-    //     self.light_levels = data
-    //         .into_iter()
-    //         .map(|data| (data.id.clone(), LightLevel::new(&self.api, data)))
-    //         .collect();
-    //     Ok(&self.light_levels)
-    // }
+    pub async fn temperature(&self, id: impl Into<String>) -> Option<Temperature> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .temps
+            .get(&id.into())
+            .map(|data| Temperature::new(&self.api, data.clone()))
+    }
 
-    // pub async fn temperature(
-    //     &self,
-    //     id: impl Into<String>,
-    // ) -> Result<&'a Temperature, HueAPIError> {
-    //     let data = self.api.get_temperature(id).await?;
-    //     let id = data.id.clone();
-    //     let temperature = Temperature::new(&self.api, data);
+    pub async fn temperatures(&self) -> Vec<Temperature> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .temps
+            .iter()
+            .map(|(_, data)| Temperature::new(&self.api, data.clone()))
+            .collect()
+    }
 
-    //     self.temps.insert(id.clone(), temperature);
-    //     self.temps.get(&id).ok_or_else(|| HueAPIError::BadResponse)
-    // }
+    pub async fn zgp_connectivity(&self, id: impl Into<String>) -> Option<ZGPConnectivity> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .zgp_conns
+            .get(&id.into())
+            .map(|data| ZGPConnectivity::new(data.clone()))
+    }
 
-    // pub async fn temperatures(
-    //     &self,
-    // ) -> Result<&'a HashMap<String, Temperature>, HueAPIError> {
-    //     let temps = self.api.get_temperatures().await?;
-    //     self.temps = temps
-    //         .into_iter()
-    //         .map(|data| (data.id.clone(), Temperature::new(&self.api, data)))
-    //         .collect();
-    //     Ok(&self.temps)
-    // }
+    pub async fn zgp_connectivities(&self) -> Vec<ZGPConnectivity> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .zgp_conns
+            .iter()
+            .map(|(_, data)| ZGPConnectivity::new(data.clone()))
+            .collect()
+    }
 
-    // pub async fn zgp_connectivity(
-    //     &self,
-    //     id: impl Into<String>,
-    // ) -> Result<ZGPConnectivity, HueAPIError> {
-    //     let data = self.api.get_zgp_connectivity(id).await?;
-    //     Ok(ZGPConnectivity::new(data))
-    // }
+    pub async fn zigbee_connectivity(&self, id: impl Into<String>) -> Option<ZigbeeConnectivity> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .zigbee_conns
+            .get(&id.into())
+            .map(|data| ZigbeeConnectivity::new(&self.api, data.clone()))
+    }
 
-    // pub async fn zgp_connectivities(&self) -> Result<Vec<ZGPConnectivity>, HueAPIError> {
-    //     let data = self.api.get_zgp_connectivities().await?;
-    //     Ok(data
-    //         .into_iter()
-    //         .map(|zigb| ZGPConnectivity::new(zigb))
-    //         .collect())
-    // }
+    pub async fn zigbee_connectivities(&self) -> Vec<ZigbeeConnectivity> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .zigbee_conns
+            .iter()
+            .map(|(_, data)| ZigbeeConnectivity::new(&self.api, data.clone()))
+            .collect()
+    }
 
-    // pub async fn zigbee_connectivity(
-    //     &self,
-    //     id: impl Into<String>,
-    // ) -> Result<ZigbeeConnectivity, HueAPIError> {
-    //     let data = self.api.get_zigbee_connectivity(id).await?;
-    //     Ok(ZigbeeConnectivity::new(&self.api, data))
-    // }
+    pub async fn zigbee_device_discovery(
+        &self,
+        id: impl Into<String>,
+    ) -> Option<ZigbeeDeviceDiscovery> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .zigbee_dds
+            .get(&id.into())
+            .map(|data| ZigbeeDeviceDiscovery::new(&self.api, data.clone()))
+    }
 
-    // pub async fn zigbee_connectivities(&self) -> Result<Vec<ZigbeeConnectivity>, HueAPIError> {
-    //     let data = self.api.get_zigbee_connectivities().await?;
-    //     Ok(data
-    //         .into_iter()
-    //         .map(|zigb| ZigbeeConnectivity::new(&self.api, zigb))
-    //         .collect())
-    // }
+    pub async fn zigbee_device_discoveries(&self) -> Vec<ZigbeeDeviceDiscovery> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .zigbee_dds
+            .iter()
+            .map(|(_, data)| ZigbeeDeviceDiscovery::new(&self.api, data.clone()))
+            .collect()
+    }
 
-    // pub async fn zigbee_device_discovery(
-    //     &self,
-    //     id: impl Into<String>,
-    // ) -> Result<ZigbeeDeviceDiscovery, HueAPIError> {
-    //     let data = self.api.get_zigbee_device_discovery(id).await?;
-    //     Ok(ZigbeeDeviceDiscovery::new(&self.api, data))
-    // }
+    pub async fn zzone(&self, id: impl Into<String>) -> Option<Zone> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .zones
+            .get(&id.into())
+            .map(|data| Zone::new(&self.api, data.clone()))
+    }
 
-    // pub async fn zigbee_device_discoveries(
-    //     &self,
-    // ) -> Result<Vec<ZigbeeDeviceDiscovery>, HueAPIError> {
-    //     let data = self.api.get_zigbee_device_discoveries().await?;
-    //     Ok(data
-    //         .into_iter()
-    //         .map(|zigb| ZigbeeDeviceDiscovery::new(&self.api, zigb))
-    //         .collect())
-    // }
+    pub async fn zones(&self) -> Vec<Zone> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .zones
+            .iter()
+            .map(|(_, data)| Zone::new(&self.api, data.clone()))
+            .collect()
+    }
 
-    // pub async fn zone(&self, id: impl Into<String>) -> Result<&'a Zone, HueAPIError> {
-    //     let data = self.api.get_zone(id).await?;
-    //     let id = data.id.clone();
-    //     let zone = Zone::new(&self.api, data);
+    pub async fn create_zone(&self, builder: ZoneBuilder) -> Result<Zone, HueAPIError> {
+        let rid = self
+            .api
+            .post_zone(serde_json::to_value(builder).unwrap())
+            .await?;
+        let data = self.api.get_zone(rid.rid).await?;
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .zones
+            .insert(data.id.clone(), data.clone());
+        Ok(Zone::new(&self.api, data))
+    }
 
-    //     self.zones.insert(id.clone(), zone);
-    //     self.zones.get(&id).ok_or_else(|| HueAPIError::BadResponse)
-    // }
-
-    // pub async fn zones(&self) -> Result<&'a HashMap<String, Zone>, HueAPIError> {
-    //     let res = self.api.get_zones().await?;
-    //     self.zones.extend(
-    //         res.into_iter()
-    //             .map(|zone| (zone.id.clone(), Zone::new(&self.api, zone))),
-    //     );
-    //     Ok(&self.zones)
-    // }
-
-    // pub async fn create_zone(&self, builder: ZoneBuilder) -> Result<&'a Zone, HueAPIError> {
-    //     let rid = self
-    //         .api
-    //         .post_zone(serde_json::to_value(builder).unwrap())
-    //         .await?;
-    //     self.zone(rid.rid).await
-    // }
-
-    // pub async fn delete_zone(
-    //     &self,
-    //     id: impl Into<String>,
-    // ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
-    //     let res = self.api.delete_zone(id).await?;
-    //     let ids = res.iter().map(|rid| &rid.rid).collect::<HashSet<_>>();
-    //     self.zones.retain(|id, _| !ids.contains(id));
-    //     Ok(res)
-    // }
+    pub async fn delete_zone(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let res = self.api.delete_zone(id).await?;
+        Bridge::delete_from_cache(&mut self.cache.lock().expect("lock cache"), &res);
+        Ok(res)
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]

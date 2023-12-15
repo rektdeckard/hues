@@ -13,6 +13,11 @@ name = "hues"
 path = "src/main.rs"
 features = ["mdns"]
 
+[[example]]
+name = "all"
+path = "examples/all.rs"
+features = ["mdns"]
+
 [features]
 default = ["mdns"]
 mdns = ["dep:mdns", "dep:futures-util"]
@@ -27,3 +32,6 @@ reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1.35.0", features = ["full"] }
+
+[dev-dependencies]
+dotenv = "0.15"
