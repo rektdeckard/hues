@@ -9,7 +9,7 @@ pub enum RegisterResponse {
 }
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct RegisterErrorPayload {
+pub struct RegisterErrorPayload {
     #[serde(rename = "type")]
     pub error_type: u16,
     pub address: String,
@@ -17,7 +17,7 @@ pub(crate) struct RegisterErrorPayload {
 }
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct RegisterSuccessPayload {
+pub struct RegisterSuccessPayload {
     pub username: String,
     pub clientkey: String,
 }

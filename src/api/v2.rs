@@ -1,32 +1,57 @@
-use super::v1::RegisterResponse;
-use super::{HueAPIError, HueAPIResponse, LightGet, ResourceIdentifier};
-use reqwest::Client;
+use super::{v1::RegisterResponse, HueAPIError, HueAPIResponse};
+use crate::service::{
+    bridge::BridgeData,
+    control::{ButtonData, RelativeRotaryData},
+    device::{DeviceData, DevicePowerData},
+    group::GroupData,
+    light::LightData,
+    resource::{Resource, ResourceIdentifier},
+    scene::SceneData,
+    sensor::{
+        GeofenceClientData, GeolocationData, LightLevelData, MotionData, Temperature,
+        TemperatureData,
+    },
+    thirdparty::{HomeKitData, MatterData, MatterFabricData},
+    zigbee::{
+        ZGPConnectivity, ZGPConnectivityData, ZigbeeConnectivity, ZigbeeConnectivityData,
+        ZigbeeDeviceDiscoveryData,
+    },
+    zone::{HomeData, ZoneData},
+};
+use reqwest::{Client as ReqwestClient, IntoUrl, Method};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use serde_json::json;
 use std::net::IpAddr;
 
 const PREFIX: &'static str = "/clip/v2";
 
-pub struct V2 {
+#[derive(Clone, Debug)]
+pub struct BridgeClient {
     addr: IpAddr,
     app_key: String,
-    client: Client,
+    client: ReqwestClient,
 }
 
-impl V2 {
+impl BridgeClient {
     pub(crate) fn new(addr: impl Into<IpAddr>, app_key: impl Into<String>) -> Self {
-        V2 {
+        BridgeClient {
             addr: addr.into(),
             app_key: app_key.into(),
-            client: Client::builder()
-                // FIXME: why cert :()
+            client: ReqwestClient::builder()
+                // FIXME: why cert :(
                 .danger_accept_invalid_certs(true)
                 .build()
                 .unwrap(),
         }
     }
 
-    pub(crate) fn addr(&self) -> String {
-        self.addr.to_string().clone()
+    pub fn addr(&self) -> &IpAddr {
+        &self.addr
+    }
+
+    pub fn app_key(&self) -> &String {
+        &self.app_key
     }
 
     pub(crate) async fn create_app(
@@ -65,84 +90,791 @@ impl V2 {
         format!("https://{}/api", &self.addr)
     }
 
-    pub(crate) async fn identify_light(
+    async fn make_request<Body: Serialize, Return>(
         &self,
-        id: impl Into<String>,
-    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
-        let id = id.into();
+        url: impl IntoUrl,
+        method: Method,
+        body: Option<Body>,
+    ) -> Result<Return, HueAPIError>
+    where
+        Return: DeserializeOwned,
+    {
         match self
             .client
-            .put(self.api_url() + "/resource/light/" + &id)
+            .request(method, url)
             .header("hue-application-key", &self.app_key)
-            .json(&json!({ "identify": { "action": "identify" } }))
-            // .json(&json!({ "on": { "on": true } }))
+            .json(&body)
             .send()
             .await
         {
             Ok(res) => {
-                return match res.json::<HueAPIResponse<Vec<ResourceIdentifier>>>().await {
+                // dbg!(res.text().await);
+                // Err(HueAPIError::BadDeserialize)
+                match res.json::<HueAPIResponse<Return>>().await {
                     Ok(res) => {
-                        if res.errors.is_empty() {
-                            Ok(res.data)
+                        if res.errors.is_empty() && res.data.is_some() {
+                            Ok(res.data.unwrap())
                         } else {
                             Err(HueAPIError::HueBridgeError(
                                 res.errors[0].description.clone(),
                             ))
                         }
                     }
-                    _ => Err(HueAPIError::BadDeserialize),
+
+                    Err(e) => {
+                        dbg!(e);
+                        Err(HueAPIError::BadDeserialize)
+                    }
                 }
             }
             _ => Err(HueAPIError::BadRequest),
         }
     }
 
-    pub(crate) async fn update_light(
+    pub(crate) async fn get_bridge(&self) -> Result<BridgeData, HueAPIError> {
+        let url = self.api_url() + "/resource/bridge";
+        match self
+            .make_request::<(), Vec<BridgeData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_bridge_home(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<HomeData, HueAPIError> {
+        let url = self.api_url() + "/resource/bridge_home/" + &id.into();
+        match self
+            .make_request::<(), Vec<HomeData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_bridge_homes(&self) -> Result<Vec<HomeData>, HueAPIError> {
+        let url = self.api_url() + "/resource/bridge_home";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_resources(&self) -> Result<Vec<Resource>, HueAPIError> {
+        let url = self.api_url() + "/resource";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_button(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<ButtonData, HueAPIError> {
+        let url = self.api_url() + "/resource/button/" + &id.into();
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_buttons(&self) -> Result<Vec<ButtonData>, HueAPIError> {
+        let url = self.api_url() + "/resource/button";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_relative_rotary(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<RelativeRotaryData, HueAPIError> {
+        let url = self.api_url() + "/resource/relative_rotary/" + &id.into();
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_relative_rotaries(
+        &self,
+    ) -> Result<Vec<RelativeRotaryData>, HueAPIError> {
+        let url = self.api_url() + "/resource/relative_rotary";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_geolocation(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<GeolocationData, HueAPIError> {
+        let url = self.api_url() + "/resource/geolocation/" + &id.into();
+        match self
+            .make_request::<(), Vec<GeolocationData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_geolocations(&self) -> Result<Vec<GeolocationData>, HueAPIError> {
+        let url = self.api_url() + "/resource/geolocation";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_geolocation(
         &self,
         id: impl Into<String>,
         payload: &serde_json::Value,
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
-        let id = id.into();
+        let url = self.api_url() + "/resource/geolocation/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn get_geofence_client(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<GeofenceClientData, HueAPIError> {
+        let url = self.api_url() + "/resource/geofence_client/" + &id.into();
         match self
-            .client
-            .put(self.api_url() + "/resource/light/" + &id)
-            .header("hue-application-key", &self.app_key)
-            .json(payload)
-            // .json(&json!({ "on": { "on": true } }))
-            .send()
+            .make_request::<(), Vec<GeofenceClientData>>(url, Method::GET, None::<()>)
             .await
         {
-            Ok(res) => {
-                return match res.json::<HueAPIResponse<Vec<ResourceIdentifier>>>().await {
-                    Ok(res) => {
-                        if res.errors.is_empty() {
-                            Ok(res.data)
-                        } else {
-                            Err(HueAPIError::HueBridgeError(
-                                res.errors[0].description.clone(),
-                            ))
-                        }
-                    }
-                    _ => Err(HueAPIError::BadDeserialize),
-                }
-            }
-            _ => Err(HueAPIError::BadRequest),
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
         }
     }
 
-    pub(crate) async fn get_lights(&self) -> Result<HueAPIResponse<Vec<LightGet>>, HueAPIError> {
+    pub(crate) async fn get_geofence_clients(
+        &self,
+    ) -> Result<Vec<GeofenceClientData>, HueAPIError> {
+        let url = self.api_url() + "/resource/geofence_client";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn post_geofence_client(
+        &self,
+        payload: serde_json::Value,
+    ) -> Result<ResourceIdentifier, HueAPIError> {
+        let url = self.api_url() + "/resource/geofence_client";
+        let rids = self
+            .make_request::<serde_json::Value, Vec<ResourceIdentifier>>(
+                url,
+                Method::POST,
+                Some(payload.into()),
+            )
+            .await?;
+        match rids.into_iter().nth(0) {
+            Some(rid) => Ok(rid),
+            None => Err(HueAPIError::BadDeserialize),
+        }
+    }
+
+    pub(crate) async fn delete_geofence_client(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/geofence_client/" + &id.into();
+        self.make_request(url, Method::DELETE, None::<()>).await
+    }
+
+    pub(crate) async fn put_geofence_client(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/geofence_client/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn get_homekit(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<HomeKitData, HueAPIError> {
+        let url = self.api_url() + "/resource/homekit/" + &id.into();
         match self
-            .client
-            .get(self.api_url() + "/resource/light")
-            .header("hue-application-key", &self.app_key)
-            .send()
+            .make_request::<(), Vec<HomeKitData>>(url, Method::GET, None::<()>)
             .await
         {
-            Ok(res) => res
-                .json::<HueAPIResponse<Vec<LightGet>>>()
-                .await
-                .map_err(|_| HueAPIError::BadDeserialize),
-            _ => Err(HueAPIError::BadRequest),
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
         }
+    }
+
+    pub(crate) async fn get_homekits(&self) -> Result<Vec<HomeKitData>, HueAPIError> {
+        let url = self.api_url() + "/resource/homekit";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_homekit(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/homekit/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn get_matter(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<MatterData, HueAPIError> {
+        let url = self.api_url() + "/resource/matter/" + &id.into();
+        match self
+            .make_request::<(), Vec<MatterData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_matters(&self) -> Result<Vec<MatterData>, HueAPIError> {
+        let url = self.api_url() + "/resource/matter";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_matter(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/matter/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn get_matter_fabric(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<MatterFabricData, HueAPIError> {
+        let url = self.api_url() + "/resource/matter_fabric/" + &id.into();
+        match self
+            .make_request::<(), Vec<MatterFabricData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_matter_fabrics(&self) -> Result<Vec<MatterFabricData>, HueAPIError> {
+        let url = self.api_url() + "/resource/matter_fabric";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn delete_matter_fabric(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/matter_fabric/" + &id.into();
+        self.make_request(url, Method::DELETE, None::<()>).await
+    }
+
+    pub(crate) async fn get_motion(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<MotionData, HueAPIError> {
+        let url = self.api_url() + "/resource/motion/" + &id.into();
+        match self
+            .make_request::<(), Vec<MotionData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_motions(&self) -> Result<Vec<MotionData>, HueAPIError> {
+        let url = self.api_url() + "/resource/motion";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_motion(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/motion/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn get_camera_motion(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<MotionData, HueAPIError> {
+        let url = self.api_url() + "/resource/camera_motion/" + &id.into();
+        match self
+            .make_request::<(), Vec<MotionData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_camera_motions(&self) -> Result<Vec<MotionData>, HueAPIError> {
+        let url = self.api_url() + "/resource/camera_motion";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_camera_motion(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/camera_motion/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn get_device(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<DeviceData, HueAPIError> {
+        let url = self.api_url() + "/resource/device/" + &id.into();
+        match self
+            .make_request::<(), Vec<DeviceData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_devices(&self) -> Result<Vec<DeviceData>, HueAPIError> {
+        let url = self.api_url() + "/resource/device";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_device(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/device/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn delete_device(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/device/" + &id.into();
+        self.make_request(url, Method::DELETE, None::<()>).await
+    }
+
+    pub(crate) async fn get_device_power(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<DevicePowerData, HueAPIError> {
+        let url = self.api_url() + "/resource/device_power/" + &id.into();
+        match self
+            .make_request::<(), Vec<DevicePowerData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_device_powers(&self) -> Result<Vec<DevicePowerData>, HueAPIError> {
+        let url = self.api_url() + "/resource/device_power";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_grouped_light(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<GroupData, HueAPIError> {
+        let url = self.api_url() + "/resource/grouped_light/" + &id.into();
+        match self
+            .make_request::<(), Vec<GroupData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_grouped_lights(&self) -> Result<Vec<GroupData>, HueAPIError> {
+        let url = self.api_url() + "/resource/grouped_light";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_grouped_light(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/grouped_light/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn get_light(&self, id: impl Into<String>) -> Result<LightData, HueAPIError> {
+        let url = self.api_url() + "/resource/light/" + &id.into();
+        match self
+            .make_request::<(), Vec<LightData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_lights(&self) -> Result<Vec<LightData>, HueAPIError> {
+        let url = self.api_url() + "/resource/light";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_light(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/light/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn get_room(&self, id: impl Into<String>) -> Result<ZoneData, HueAPIError> {
+        let url = self.api_url() + "/resource/room/" + &id.into();
+        match self
+            .make_request::<(), Vec<ZoneData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_rooms(&self) -> Result<Vec<ZoneData>, HueAPIError> {
+        let url = self.api_url() + "/resource/room";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_room(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/room/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn post_room(
+        &self,
+        payload: impl Into<serde_json::Value>,
+    ) -> Result<ResourceIdentifier, HueAPIError> {
+        let url = self.api_url() + "/resource/room";
+        let rids = self
+            .make_request::<serde_json::Value, Vec<ResourceIdentifier>>(
+                url,
+                Method::POST,
+                Some(payload.into()),
+            )
+            .await?;
+        match rids.into_iter().nth(0) {
+            Some(rid) => Ok(rid),
+            None => Err(HueAPIError::BadDeserialize),
+        }
+    }
+
+    pub(crate) async fn delete_room(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/room/" + &id.into();
+        self.make_request(url, Method::DELETE, None::<()>).await
+    }
+
+    pub(crate) async fn get_scene(&self, id: impl Into<String>) -> Result<SceneData, HueAPIError> {
+        let url = self.api_url() + "/resource/scene/" + &id.into();
+        match self
+            .make_request::<(), Vec<SceneData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_scenes(&self) -> Result<Vec<SceneData>, HueAPIError> {
+        let url = self.api_url() + "/resource/scene";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_scene(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/scene/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn post_scene(
+        &self,
+        payload: impl Into<serde_json::Value>,
+    ) -> Result<ResourceIdentifier, HueAPIError> {
+        let url = self.api_url() + "/resource/scene";
+        let rids = self
+            .make_request::<serde_json::Value, Vec<ResourceIdentifier>>(
+                url,
+                Method::POST,
+                Some(payload.into()),
+            )
+            .await?;
+        match rids.into_iter().nth(0) {
+            Some(rid) => Ok(rid),
+            None => Err(HueAPIError::BadDeserialize),
+        }
+    }
+
+    pub(crate) async fn delete_scene(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/scene/" + &id.into();
+        self.make_request(url, Method::DELETE, None::<()>).await
+    }
+
+    pub(crate) async fn get_light_level(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<LightLevelData, HueAPIError> {
+        let url = self.api_url() + "/resource/light_level/" + &id.into();
+        match self
+            .make_request::<(), Vec<LightLevelData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_light_levels(&self) -> Result<Vec<LightLevelData>, HueAPIError> {
+        let url = self.api_url() + "/resource/light_level";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_light_level(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/light_level/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn get_temperature(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<TemperatureData, HueAPIError> {
+        let url = self.api_url() + "/resource/light_level/" + &id.into();
+        match self
+            .make_request::<(), Vec<TemperatureData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_temperatures(&self) -> Result<Vec<TemperatureData>, HueAPIError> {
+        let url = self.api_url() + "/resource/temperature";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_temperature(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/temperature/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn get_zone(&self, id: impl Into<String>) -> Result<ZoneData, HueAPIError> {
+        let url = self.api_url() + "/resource/zone/" + &id.into();
+        match self
+            .make_request::<(), Vec<ZoneData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_zones(&self) -> Result<Vec<ZoneData>, HueAPIError> {
+        let url = self.api_url() + "/resource/zone";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_zone(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/zone/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn post_zone(
+        &self,
+        payload: impl Into<serde_json::Value>,
+    ) -> Result<ResourceIdentifier, HueAPIError> {
+        let url = self.api_url() + "/resource/zone";
+        let rids = self
+            .make_request::<serde_json::Value, Vec<ResourceIdentifier>>(
+                url,
+                Method::POST,
+                Some(payload.into()),
+            )
+            .await?;
+        match rids.into_iter().nth(0) {
+            Some(rid) => Ok(rid),
+            None => Err(HueAPIError::BadDeserialize),
+        }
+    }
+
+    pub(crate) async fn delete_zone(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/zone/" + &id.into();
+        self.make_request(url, Method::DELETE, None::<()>).await
+    }
+
+    pub(crate) async fn get_zgp_connectivity(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<ZGPConnectivityData, HueAPIError> {
+        let url = self.api_url() + "/resource/zgp_connectivity" + &id.into();
+        match self
+            .make_request::<(), Vec<ZGPConnectivityData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_zgp_connectivities(
+        &self,
+    ) -> Result<Vec<ZGPConnectivityData>, HueAPIError> {
+        let url = self.api_url() + "/resource/zgp_connectivity";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_zigbee_connectivity(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<ZigbeeConnectivityData, HueAPIError> {
+        let url = self.api_url() + "/resource/zigbee_connectivity" + &id.into();
+        match self
+            .make_request::<(), Vec<ZigbeeConnectivityData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_zigbee_connectivities(
+        &self,
+    ) -> Result<Vec<ZigbeeConnectivityData>, HueAPIError> {
+        let url = self.api_url() + "/resource/zigbee_connectivity";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_zigbee_connectivity(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/zigbee_connectivity/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn get_zigbee_device_discovery(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<ZigbeeDeviceDiscoveryData, HueAPIError> {
+        let url = self.api_url() + "/resource/zigbee_device_discovery" + &id.into();
+        match self
+            .make_request::<(), Vec<ZigbeeDeviceDiscoveryData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_zigbee_device_discoveries(
+        &self,
+    ) -> Result<Vec<ZigbeeDeviceDiscoveryData>, HueAPIError> {
+        let url = self.api_url() + "/resource/zigbee_device_discovery";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_zigbee_device_discovery(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/zigbee_device_discovery/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
     }
 }
