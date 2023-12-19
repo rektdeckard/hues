@@ -19,16 +19,19 @@ path = "examples/all.rs"
 features = ["mdns"]
 
 [features]
-default = ["mdns"]
+default = ["mdns", "sse"]
 mdns = ["dep:mdns", "dep:futures-util"]
+sse = ["dep:reqwest-eventsource"]
 
 [dependencies]
 futures-util = { version = "0.3.29", optional = true }
 json-patch = "1"
 log = { version = "0.4", features = ["release_max_level_off"] }
 mdns = { version = "3.0.0", optional = true }
+optfield = "0.3.0"
 rand = "0.8.5"
 reqwest = { version = "0.11", features = ["json"] }
+reqwest-eventsource = { version = "0.5", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1.35.0", features = ["full"] }

@@ -1,30 +1,35 @@
 use super::{
+    bridge::Bridge,
     device::SetStatus,
     resource::{ResourceIdentifier, ResourceType},
 };
 use crate::{
-    api::{BridgeClient, HueAPIError},
+    api::HueAPIError,
     command::{merge_commands, ZigbeeConnectivityCommand, ZigbeeDeviceDiscoveryCommand},
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct ZigbeeConnectivity<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: ZigbeeConnectivityData,
 }
 
 impl<'a> ZigbeeConnectivity<'a> {
-    pub fn new(api: &'a BridgeClient, data: ZigbeeConnectivityData) -> Self {
-        ZigbeeConnectivity { api, data }
+    pub fn new(bridge: &'a Bridge, data: ZigbeeConnectivityData) -> Self {
+        ZigbeeConnectivity { bridge, data }
     }
 
     pub fn data(&self) -> &ZigbeeConnectivityData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 
     pub fn status(&self) -> ZigbeeStatus {
@@ -36,7 +41,10 @@ impl<'a> ZigbeeConnectivity<'a> {
         commands: &[ZigbeeConnectivityCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_zigbee_connectivity(self.id(), &payload).await
+        self.bridge
+            .api
+            .put_zigbee_connectivity(self.id(), &payload)
+            .await
     }
 }
 
@@ -56,6 +64,15 @@ pub struct ZigbeeConnectivityData {
     pub extended_pan_id: Option<String>,
 }
 
+impl ZigbeeConnectivityData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::ZigbeeConnectivity,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct ZGPConnectivity {
     data: ZGPConnectivityData,
@@ -70,8 +87,12 @@ impl ZGPConnectivity {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 
     pub fn status(&self) -> ZigbeeStatus {
@@ -92,23 +113,36 @@ pub struct ZGPConnectivityData {
     pub source_id: String,
 }
 
+impl ZGPConnectivityData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::ZGPConnectivity,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct ZigbeeDeviceDiscovery<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: ZigbeeDeviceDiscoveryData,
 }
 
 impl<'a> ZigbeeDeviceDiscovery<'a> {
-    pub fn new(api: &'a BridgeClient, data: ZigbeeDeviceDiscoveryData) -> Self {
-        ZigbeeDeviceDiscovery { api, data }
+    pub fn new(bridge: &'a Bridge, data: ZigbeeDeviceDiscoveryData) -> Self {
+        ZigbeeDeviceDiscovery { bridge, data }
     }
 
     pub fn data(&self) -> &ZigbeeDeviceDiscoveryData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 
     pub fn status(&self) -> ZigbeeDeviceDiscoveryStatus {
@@ -120,7 +154,8 @@ impl<'a> ZigbeeDeviceDiscovery<'a> {
         commands: &[ZigbeeDeviceDiscoveryCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api
+        self.bridge
+            .api
             .put_zigbee_device_discovery(self.id(), &payload)
             .await
     }
@@ -136,6 +171,15 @@ pub struct ZigbeeDeviceDiscoveryData {
     pub owner: ResourceIdentifier,
     /// Current device communication state with the bridge
     pub status: ZigbeeDeviceDiscoveryStatus,
+}
+
+impl ZigbeeDeviceDiscoveryData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::ZigbeeDeviceDiscovery,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]

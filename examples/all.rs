@@ -4,8 +4,9 @@ use hues::{
     BasicCommand, Bridge, CIEColor, ColorFeatureBasic, EffectType, GeofenceClientBuilder,
     GeofenceClientCommand, GeolocationCommand, GroupCommand, GroupDimmingState, HomeKitCommand,
     LightAction, LightCommand, MatterCommand, MotionCommand, OnState, ProductArchetype, Resource,
-    ResourceIdentifier, ResourceType, SceneAction, SceneBuilder, SceneCommand, SceneEffectState,
-    ScenePalette, ScenePaletteColor, SceneStatus, SignalColor, SignalType, Zone, ZoneArchetype,
+    ResourceIdentifier, ResourceType, SceneAction, SceneBuilder, SceneColorTempState, SceneCommand,
+    SceneEffectState, ScenePalette, ScenePaletteColor, SceneStatus, Schedule, SignalColor,
+    SignalType, SmartScene, SmartSceneCommand, TimeslotStart, Weekday, Zone, ZoneArchetype,
     ZoneBuilder, ZoneCommand,
 };
 use rand::prelude::*;
@@ -35,73 +36,65 @@ where
 async fn main() {
     dotenv().ok();
 
-    // DISCOVER BRIDGE AND CREATE APP
-    {
-        // If you do not know your bridge IP, and have not yet created an app key
-        // NOTE: you should only do this once. Settings and configurations are tied
-        // to your app key, so you won't be able to recall scenes and other config
-        // from another app key.
-
-        // let mut bridge = Bridge::discover().await.unwrap().build();
-
-        // This is your App Key, save it for later!
-
-        // let key = &bridge
-        //     .create_app("my_hue_app", "discord_bot")
-        //     .await
-        //     .unwrap();
-    }
-
-    // DISCOVER BRIDGE WITH EXISTING APP
-    {
-        // If you know your App Key, but not what IP your bridge has:
-
-        // let bridge = Bridge::discover()
-        //     .await
-        //     .unwrap()
-        //     .app_key(&std::env::var("APP_KEY").unwrap())
-        //     .build();
-    }
-
-    // KNOWN IP AND APP
-    // If you know your IP and App Key in advance:
-    let bridge = Bridge::new([10u8, 0, 0, 190], std::env::var("APP_KEY").unwrap())
-        // This initiates polling. Polling updates all device states periodically.
-        // Without either polling or calling `bridge.refresh().await`, no devices will be populated on the bridge.
+    let bridge = Bridge::new([10u8, 0, 0, 143], std::env::var("APP_KEY").unwrap())
         .poll(Duration::from_secs(30))
         .await;
 
-    log_time_async(alert_lights(&bridge, "#FF0000", "#012345")).await;
+    let office = bridge
+        .rooms()
+        .into_iter()
+        .find(|r| r.name() == "Office")
+        .unwrap();
+
+    // dbg!(bridge.groups().get(1).unwrap().is_on());
+
+    // log_time_async(smart_scene_stuff(&bridge)).await;
+    // log_time_async(alert_lights(&bridge, "#FF1100", "#11FF00")).await;
     // log_time_async(create_zone(&bridge, "Fun Zone", ZoneArchetype::Computer)).await;
-    // log_time_async(change_room_type(&bridge, "Toby's Office", ZoneArchetype::Balcony)).await;
-    // log_time_async(rename_room(&bridge, "Toby's Office", "Bat Cave")).await;
+    // log_time_async(change_room_type(&bridge, "Office", ZoneArchetype::Office)).await;
+    // log_time_async(rename_room(&bridge, "Bat Cave", "Office")).await;
     // log_time_async(rename_scene(&bridge)).await;
     // log_time_async(create_scene(&bridge, "TEST SCENE")).await;
-    // log_time_async(recall_scene(&bridge, "Diabs")).await;
+    // log_time_async(recall_scene(&bridge, "Night Work")).await;
     // log_time_async(delete_scenes(&bridge, "TEST SCENE")).await;
     // log_time_async(identify_all_lights(&bridge)).await;
     // log_time_async(randomize_all_lights(&bridge)).await;
-    // log_time_async(set_specific_light_colors(&bridge, "#FF0000")).await;
+    // log_time_async(set_specific_light_colors(&bridge, "#FF2200")).await;
 }
 
-fn preexisting_ip_and_key() -> Bridge {
-    Bridge::new([10u8, 0, 0, 190], std::env::var("APP_KEY").unwrap())
-}
+async fn smart_scene_stuff(bridge: &Bridge) -> Result<(), HueAPIError> {
+    let _ = bridge
+        .delete_smart_scene("becae4e4-faa8-4a39-bc9d-cb16a30241db")
+        .await;
 
-async fn discover_with_key() -> Bridge {
-    Bridge::discover()
-        .await
-        .unwrap()
-        .app_key(&std::env::var("APP_KEY_OLD").unwrap())
-        .version(Version::V2)
-        // .heartbeat(Duration::from_secs(15))
-        .build()
-}
+    let scenes = bridge.scenes();
+    let galaxy = scenes.iter().find(|sc| sc.name() == "Galaxy").unwrap();
+    let mf = scenes
+        .iter()
+        .find(|sc| sc.name() == "Magic Forest")
+        .unwrap();
+    let diabs = scenes.iter().find(|sc| sc.name() == "Diabs").unwrap();
 
-async fn discover_create_key() -> Bridge {
-    let mut bridge = Bridge::discover().await.unwrap().build();
-    let _ = &bridge.create_app("magic", "the_gathering").await;
-    bridge
+    // let cmd = SmartSceneCommand::create_schedule()
+    //     .on(&[Weekday::Saturday, Weekday::Sunday])
+    //     .at(TimeslotStart::time(&[0, 20, 0]), tokyo.rid())
+    //     .build();
+
+    let ss = bridge
+        .create_smart_scene(
+            SmartScene::builder("I AM SMORT", galaxy.data().group.clone()).schedule(
+                Schedule::new()
+                    .on(&[Weekday::Saturday, Weekday::Sunday])
+                    .at(TimeslotStart::time(&[0, 54, 0]), galaxy.rid())
+                    .at(TimeslotStart::time(&[1, 27, 0]), mf.rid())
+                    .at(TimeslotStart::time(&[1, 30, 0]), diabs.rid()),
+            ),
+        )
+        .await;
+
+    // dbg!(ss);
+
+    Ok(())
 }
 
 async fn alert_lights(
@@ -110,7 +103,7 @@ async fn alert_lights(
     c2: impl Into<String>,
 ) -> Result<(), HueAPIError> {
     let _ = bridge
-        .group("0d116b60-e996-4eb1-a7af-5a3473a16e27")
+        .group("d14bacd9-a352-4f90-912b-6e6f272ff059")
         .unwrap()
         .send(&[GroupCommand::Signaling {
             signal: SignalType::Alternating,
@@ -129,10 +122,10 @@ async fn create_zone(
     name: impl Into<String>,
     archetype: ZoneArchetype,
 ) -> Result<(), HueAPIError> {
-    let zone_rid = bridge
+    let zone = bridge
         .create_zone(Zone::builder(name.into(), archetype))
         .await?;
-    dbg!(zone_rid);
+    dbg!(zone);
     Ok(())
 }
 
@@ -175,7 +168,7 @@ async fn rename_room(
             .await?;
         dbg!(res);
     } else {
-        eprintln!("No scene '{}'", &name);
+        eprintln!("No room '{}'", &name);
     }
     Ok(())
 }
@@ -185,7 +178,7 @@ async fn recall_scene(bridge: &Bridge, name: impl Into<String>) -> Result<(), Hu
     if let Some(scene) = bridge.scenes().iter().find(|sc| sc.name() == &name) {
         scene
             .send(&[SceneCommand::Recall {
-                action: Some(SceneStatus::DynamicPalette),
+                action: Some(SceneStatus::Active),
                 duration: Some(2000),
                 dimming: None,
             }])
@@ -222,14 +215,14 @@ async fn create_scene(bridge: &Bridge, name: impl Into<String>) -> Result<(), Hu
             SceneBuilder::new(
                 name.into(),
                 ResourceIdentifier {
-                    rid: "690358dc-2a28-4426-9ffe-69567f9dfbf1".into(),
+                    rid: "eab284ce-48ad-4f9f-9d21-4da1af36099d".into(),
                     rtype: ResourceType::Room,
                 },
             )
             .actions(vec![
                 SceneAction {
                     target: ResourceIdentifier {
-                        rid: "509c0477-a1c3-44de-b797-03f528c902b2".into(),
+                        rid: "1ea8644a-db7b-4f4a-a4b6-87703a296cce".into(),
                         rtype: ResourceType::Light,
                     },
                     action: LightAction {
@@ -239,7 +232,7 @@ async fn create_scene(bridge: &Bridge, name: impl Into<String>) -> Result<(), Hu
                 },
                 SceneAction {
                     target: ResourceIdentifier {
-                        rid: "1e2c0843-88f1-45ad-b182-f78a375e0ea9".into(),
+                        rid: "909c4644-122e-4a52-b687-370bef85eb72".into(),
                         rtype: ResourceType::Light,
                     },
                     action: LightAction {
@@ -249,28 +242,7 @@ async fn create_scene(bridge: &Bridge, name: impl Into<String>) -> Result<(), Hu
                 },
                 SceneAction {
                     target: ResourceIdentifier {
-                        rid: "120b6f18-b912-4211-bb91-038bbfdc918c".into(),
-                        rtype: ResourceType::Light,
-                    },
-                    action: Default::default(),
-                },
-                SceneAction {
-                    target: ResourceIdentifier {
-                        rid: "1e84f1c6-71ca-4166-ad3e-034815160617".into(),
-                        rtype: ResourceType::Light,
-                    },
-                    action: Default::default(),
-                },
-                SceneAction {
-                    target: ResourceIdentifier {
-                        rid: "7b5d3a37-b09c-4295-9247-3d9d87154118".into(),
-                        rtype: ResourceType::Light,
-                    },
-                    action: Default::default(),
-                },
-                SceneAction {
-                    target: ResourceIdentifier {
-                        rid: "c75112fc-6727-46f7-8fe9-cf64021c1a16".into(),
+                        rid: "fd6e67f8-da20-4fc1-81ae-459e039abfe9".into(),
                         rtype: ResourceType::Light,
                     },
                     action: LightAction {
@@ -280,11 +252,51 @@ async fn create_scene(bridge: &Bridge, name: impl Into<String>) -> Result<(), Hu
                 },
                 SceneAction {
                     target: ResourceIdentifier {
-                        rid: "2aaa6432-d225-4beb-aed7-16bd1fa1d287".into(),
+                        rid: "61025bd7-6150-4b7f-b1ea-70b4c3dba5c4".into(),
                         rtype: ResourceType::Light,
                     },
                     action: LightAction {
                         color: Some(ColorFeatureBasic::xy(0.3, 0.4)),
+                        ..Default::default()
+                    },
+                },
+                SceneAction {
+                    target: ResourceIdentifier {
+                        rid: "7f1f28a2-be41-49bd-a27f-28e36980a05a".into(),
+                        rtype: ResourceType::Light,
+                    },
+                    action: LightAction {
+                        color: Some(ColorFeatureBasic::xy(0.3, 0.4)),
+                        ..Default::default()
+                    },
+                },
+                SceneAction {
+                    target: ResourceIdentifier {
+                        rid: "96904b1a-4024-48d7-9d40-f6c985bf18a4".into(),
+                        rtype: ResourceType::Light,
+                    },
+                    action: LightAction {
+                        color_temperature: Some(SceneColorTempState { mirek: Some(153) }),
+                        ..Default::default()
+                    },
+                },
+                SceneAction {
+                    target: ResourceIdentifier {
+                        rid: "d449485b-3244-452c-ac23-43586b7253cf".into(),
+                        rtype: ResourceType::Light,
+                    },
+                    action: LightAction {
+                        color_temperature: Some(SceneColorTempState { mirek: Some(153) }),
+                        ..Default::default()
+                    },
+                },
+                SceneAction {
+                    target: ResourceIdentifier {
+                        rid: "8b5a45e8-bdba-4263-95e7-7042129d7542".into(),
+                        rtype: ResourceType::Light,
+                    },
+                    action: LightAction {
+                        color_temperature: Some(SceneColorTempState { mirek: Some(153) }),
                         ..Default::default()
                     },
                 },

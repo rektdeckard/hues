@@ -24,6 +24,7 @@ pub enum HueAPIError {
     BadDeserialize,
     NotFound,
     HueBridgeError(String),
+    ServerSentEvent,
 }
 
 #[derive(Default, PartialEq)]

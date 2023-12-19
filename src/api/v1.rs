@@ -21,3 +21,10 @@ pub struct RegisterSuccessPayload {
     pub username: String,
     pub clientkey: String,
 }
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UnregisterResponse {
+    Success(String),
+    Error(String),
+}

@@ -1,12 +1,14 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BridgeData, ButtonData, DeviceData, DevicePowerData, DeviceSoftwareUpdateData,
+    BridgeData, ButtonData, ContactData, DeviceData, DevicePowerData, DeviceSoftwareUpdateData,
     GeofenceClientData, GeolocationData, GroupData, HomeData, HomeKitData, LightData,
     LightLevelData, MatterData, MatterFabricData, MotionData, RelativeRotaryData, SceneData,
-    TemperatureData, ZGPConnectivityData, ZigbeeConnectivityData, ZigbeeDeviceDiscoveryData,
-    ZoneData,
+    SmartSceneData, TamperData, TemperatureData, ZGPConnectivityData, ZigbeeConnectivityData,
+    ZigbeeDeviceDiscoveryData, ZoneData,
 };
+
+use super::behavior::BehaviorScriptData;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
@@ -14,12 +16,12 @@ pub enum Resource {
     #[serde(rename = "auth_v1")]
     AuthV1,
     BehaviorInstance,
-    BehaviorScript,
+    BehaviorScript(BehaviorScriptData),
     Bridge(BridgeData),
     BridgeHome(HomeData),
     Button(ButtonData),
     CameraMotion(MotionData),
-    Contact,
+    Contact(ContactData),
     Device(DeviceData),
     DevicePower(DevicePowerData),
     DeviceSoftwareUpdate(DeviceSoftwareUpdateData),
@@ -41,8 +43,8 @@ pub enum Resource {
     RelativeRotary(RelativeRotaryData),
     Room(ZoneData),
     Scene(SceneData),
-    SmartScene,
-    Tamper,
+    SmartScene(SmartSceneData),
+    Tamper(TamperData),
     #[serde(rename = "taurus_7455")]
     Taurus7455,
     Temperature(TemperatureData),
@@ -51,18 +53,11 @@ pub enum Resource {
     ZigbeeConnectivity(ZigbeeConnectivityData),
     ZigbeeDeviceDiscovery(ZigbeeDeviceDiscoveryData),
     Zone(ZoneData),
-    Unknown(UnknownData),
+    #[serde(other)]
+    Unknown,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct UnknownData {
-    #[serde(rename = "type")]
-    pub rtype: String,
-    /// Unique identifier representing a specific resource instance.
-    pub id: String,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct ResourceIdentifier {
     /// The unique id of the referenced resource.
     pub rid: String,
@@ -100,6 +95,7 @@ pub enum ResourceType {
     MatterFabric,
     Motion,
     PublicImage,
+    Recipe,
     RelativeRotary,
     Room,
     Scene,

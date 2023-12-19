@@ -1,30 +1,36 @@
 use super::{
+    bridge::Bridge,
     device::ProductArchetype,
     resource::{ResourceIdentifier, ResourceType},
 };
 use crate::{
-    api::{BridgeClient, HueAPIError},
+    api::HueAPIError,
     command::{merge_commands, LightCommand},
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
+#[derive(Debug)]
 pub struct Light<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: LightData,
 }
 
 impl<'a> Light<'a> {
-    pub fn new(api: &'a BridgeClient, data: LightData) -> Self {
-        Light { api, data }
+    pub fn new(bridge: &'a Bridge, data: LightData) -> Self {
+        Light { bridge, data }
     }
 
     pub fn data(&self) -> &LightData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 
     pub fn is_on(&self) -> bool {
@@ -57,11 +63,11 @@ impl<'a> Light<'a> {
         commands: &[LightCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_light(self.id(), &payload).await
+        self.bridge.api.put_light(self.id(), &payload).await
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LightData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
@@ -91,7 +97,16 @@ pub struct LightData {
     pub powerup: Option<PowerupState>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+impl LightData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::Light,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LightMetadata {
     /// Human readable name of a resource.
     pub name: String,
@@ -110,7 +125,7 @@ pub struct OnState {
     pub on: bool,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DimmingState {
     /// Brightness percentage.
     ///
@@ -120,7 +135,7 @@ pub struct DimmingState {
     pub min_dim_level: Option<f32>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ColorTempState {
     /// Color temperature in mirek or [None] when the light color is not in the ct spectrum.
     pub mirek: Option<u16>,
@@ -129,7 +144,7 @@ pub struct ColorTempState {
     pub mirek_schema: MirekSchema,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct MirekSchema {
     /// Minimum color temperature this light supports.
     pub mirek_minimum: u16,
@@ -137,7 +152,7 @@ pub struct MirekSchema {
     pub mirek_maximum: u16,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ColorState {
     /// CIE XY gamut position
     pub xy: CIEColor,
@@ -153,7 +168,7 @@ pub struct ColorState {
 
 /// Color gamut of color bulb.
 /// Some bulbs do not properly return the Gamut information. In this case this is not present.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CIEGamut {
     /// CIE XY gamut position
     pub red: CIEColor,
@@ -236,7 +251,7 @@ impl CIEColor {
 }
 
 /// The gammut types supported by hue
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum GamutType {
     /// Gamut of early Philips color-only products
     A,
@@ -249,7 +264,7 @@ pub enum GamutType {
     Other,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DynamicsState {
     /// Current status of the lamp with dynamics.
     pub status: DynamicsStatus,
@@ -263,7 +278,7 @@ pub struct DynamicsState {
     pub speed_valid: bool,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, PartialEq)]
+#[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DynamicsStatus {
     DynamicPalette,
@@ -282,7 +297,7 @@ pub enum AlertEffectType {
     Breathe,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SignalingState {
     /// Signals that the light supports.
     pub signal_values: Option<HashSet<SignalType>>,
@@ -290,7 +305,7 @@ pub struct SignalingState {
     pub status: Option<SignalStatus>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SignalStatus {
     /// Indicates which signal is currently active.
     pub signal: SignalType,
@@ -313,14 +328,14 @@ pub enum SignalType {
     Alternating,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Mode {
     Normal,
     Streaming,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GradientState {
     /// Collection of gradients points.
     /// For control of the gradient points through a PUT a minimum of 2 points need to be provided.
@@ -362,7 +377,7 @@ pub enum GradientMode {
     RandomPixelated,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EffectState {
     pub effect: Option<EffectType>,
     /// Possible effect values you can set in a light.
@@ -385,7 +400,7 @@ pub enum EffectType {
     NoEffect,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TimedEffectState {
     pub effect: Option<TimedEffectType>,
     /// Possible timed effect values you can set in a light.
@@ -408,7 +423,7 @@ pub enum TimedEffectType {
     NoEffect,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PowerupState {
     /// When setting the [PowerupPresetType::Custom] preset the additional properties can be set.
     /// For all other presets, no other properties can be included.

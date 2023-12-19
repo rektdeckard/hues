@@ -1,35 +1,66 @@
-use super::resource::{ResourceIdentifier, ResourceType};
+use super::{
+    bridge::Bridge,
+    resource::{ResourceIdentifier, ResourceType},
+};
 use crate::{
-    api::{BridgeClient, HueAPIError},
+    api::HueAPIError,
     command::{merge_commands, ZoneCommand},
+    Device, Light,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct Zone<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     pub data: ZoneData,
 }
 
 impl<'a> Zone<'a> {
-    pub fn new(api: &'a BridgeClient, data: ZoneData) -> Self {
-        Zone { api, data }
+    pub fn new(bridge: &'a Bridge, data: ZoneData) -> Self {
+        Zone { bridge, data }
     }
 
     pub fn data(&self) -> &ZoneData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
     }
 
-    pub fn name(&self) -> &String {
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
+    }
+
+    pub fn name(&self) -> &str {
         &self.data.metadata.name
     }
 
     pub fn archetype(&self) -> ZoneArchetype {
         self.data.metadata.archetype
+    }
+
+    pub fn devices(&self) -> Vec<Device> {
+        let rids = &self.data.children;
+        self.bridge
+            .devices()
+            .into_iter()
+            .filter_map(|d| {
+                if rids.contains(&d.rid()) {
+                    Some(d)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
+    }
+
+    pub fn lights(&self) -> Vec<Light> {
+        self.bridge
+            .lights()
+            .into_iter()
+            .filter(|l| self.data.children.contains(&l.data().owner))
+            .collect()
     }
 
     pub fn builder(name: impl Into<String>, archetype: ZoneArchetype) -> ZoneBuilder {
@@ -41,35 +72,65 @@ impl<'a> Zone<'a> {
         commands: &[ZoneCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_zone(self.id(), &payload).await
+        self.bridge.api.put_zone(self.id(), &payload).await
     }
 }
 
 #[derive(Debug)]
 pub struct Room<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     pub data: ZoneData,
 }
 
 impl<'a> Room<'a> {
-    pub fn new(api: &'a BridgeClient, data: ZoneData) -> Self {
-        Room { api, data }
+    pub fn new(bridge: &'a Bridge, data: ZoneData) -> Self {
+        Room { bridge, data }
     }
 
     pub fn data(&self) -> &ZoneData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
     }
 
-    pub fn name(&self) -> &String {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id().to_owned(),
+            rtype: ResourceType::Room,
+        }
+    }
+
+    pub fn name(&self) -> &str {
         &self.data.metadata.name
     }
 
     pub fn archetype(&self) -> ZoneArchetype {
         self.data.metadata.archetype
+    }
+
+    pub fn devices(&self) -> Vec<Device> {
+        let rids = &self.data.children;
+        self.bridge
+            .devices()
+            .into_iter()
+            .filter_map(|d| {
+                if rids.contains(&d.rid()) {
+                    Some(d)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
+    }
+
+    pub fn lights(&self) -> Vec<Light> {
+        self.bridge
+            .lights()
+            .into_iter()
+            .filter(|l| self.data.children.contains(&l.data().owner))
+            .collect()
     }
 
     pub fn builder(name: impl Into<String>, archetype: ZoneArchetype) -> ZoneBuilder {
@@ -81,7 +142,7 @@ impl<'a> Room<'a> {
         commands: &[ZoneCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_room(self.id(), &payload).await
+        self.bridge.api.put_room(self.id(), &payload).await
     }
 }
 
@@ -126,6 +187,15 @@ pub struct ZoneData {
     pub services: Vec<ResourceIdentifier>,
     /// Configuration for a zone object.
     pub metadata: ZoneMetadata,
+}
+
+impl ZoneData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::Zone,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -195,8 +265,12 @@ impl Home {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 }
 
@@ -216,4 +290,13 @@ pub struct HomeData {
     /// corresponding definition of grouped type.
     /// Supported `rtype`: [ResourceType::Group]
     pub services: Vec<ResourceIdentifier>,
+}
+
+impl HomeData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::BridgeHome,
+        }
+    }
 }

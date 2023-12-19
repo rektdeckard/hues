@@ -1,6 +1,9 @@
-use super::resource::{ResourceIdentifier, ResourceType};
+use super::{
+    bridge::Bridge,
+    resource::{ResourceIdentifier, ResourceType},
+};
 use crate::{
-    api::{BridgeClient, HueAPIError},
+    api::HueAPIError,
     command::{merge_commands, HomeKitCommand},
     MatterCommand,
 };
@@ -8,21 +11,25 @@ use serde::Deserialize;
 
 #[derive(Debug)]
 pub struct HomeKit<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: HomeKitData,
 }
 
 impl<'a> HomeKit<'a> {
-    pub fn new(api: &'a BridgeClient, data: HomeKitData) -> Self {
-        HomeKit { api, data }
+    pub fn new(bridge: &'a Bridge, data: HomeKitData) -> Self {
+        HomeKit { bridge, data }
     }
 
     pub fn data(&self) -> &HomeKitData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 
     pub async fn send(
@@ -30,7 +37,7 @@ impl<'a> HomeKit<'a> {
         commands: &[HomeKitCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_homekit(self.id(), &payload).await
+        self.bridge.api.put_homekit(self.id(), &payload).await
     }
 }
 
@@ -50,6 +57,15 @@ pub struct HomeKitData {
     pub status: HomeKitStatus,
 }
 
+impl HomeKitData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::HomeKit,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum HomeKitStatus {
@@ -60,21 +76,25 @@ pub enum HomeKitStatus {
 
 #[derive(Debug)]
 pub struct Matter<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: MatterData,
 }
 
 impl<'a> Matter<'a> {
-    pub fn new(api: &'a BridgeClient, data: MatterData) -> Self {
-        Matter { api, data }
+    pub fn new(bridge: &'a Bridge, data: MatterData) -> Self {
+        Matter { bridge, data }
     }
 
     pub fn data(&self) -> &MatterData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 
     pub async fn send(
@@ -82,7 +102,7 @@ impl<'a> Matter<'a> {
         commands: &[MatterCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_matter(self.id(), &payload).await
+        self.bridge.api.put_matter(self.id(), &payload).await
     }
 }
 
@@ -96,6 +116,15 @@ pub struct MatterData {
     pub max_fabrics: usize,
     /// Indicates whether a physical QR code is present.
     pub has_qr_code: bool,
+}
+
+impl MatterData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::Matter,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -112,8 +141,12 @@ impl MatterFabric {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 }
 
@@ -129,6 +162,15 @@ pub struct MatterFabricData {
     pub fabric_data: Option<FabricData>,
     /// UTC date and time when the fabric association was created.
     pub creation_time: String,
+}
+
+impl MatterFabricData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::MatterFabric,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]

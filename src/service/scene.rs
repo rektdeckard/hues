@@ -1,4 +1,7 @@
+use std::collections::HashSet;
+
 use super::{
+    bridge::Bridge,
     group::GroupDimmingState,
     light::EffectType,
     light::{ColorFeatureBasic, GradientMode, GradientPoint, OnState},
@@ -7,29 +10,38 @@ use super::{
 use crate::{
     api::{BridgeClient, HueAPIError},
     command::{merge_commands, SceneCommand},
+    SmartSceneCommand,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct Scene<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: SceneData,
 }
 
 impl<'a> Scene<'a> {
-    pub fn new(api: &'a BridgeClient, data: SceneData) -> Self {
-        Scene { api, data }
+    pub fn new(bridge: &'a Bridge, data: SceneData) -> Self {
+        Scene { bridge, data }
     }
 
     pub fn data(&self) -> &SceneData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
     }
 
-    pub fn name(&self) -> &String {
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
+    }
+
+    pub fn group(&self) -> ResourceIdentifier {
+        self.data.group.clone()
+    }
+
+    pub fn name(&self) -> &str {
         &self.data.metadata.name
     }
 
@@ -59,11 +71,11 @@ impl<'a> Scene<'a> {
         commands: &[SceneCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_scene(self.id(), &payload).await
+        self.bridge.api.put_scene(self.id(), &payload).await
     }
 
     pub async fn delete(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
-        self.api.delete_scene(self.id()).await
+        self.bridge.api.delete_scene(self.id()).await
     }
 }
 
@@ -104,6 +116,11 @@ impl SceneBuilder {
         self
     }
 
+    pub fn appdata(mut self, data: impl Into<String>) -> Self {
+        self.metadata.appdata = Some(data.into());
+        self
+    }
+
     pub fn palette(mut self, palette: ScenePalette) -> Self {
         self.palette = Some(palette);
         self
@@ -139,6 +156,15 @@ pub struct SceneData {
     /// Indicates whether to automatically start the scene dynamically on active recall.
     pub auto_dynamic: bool,
     pub status: SceneStatusState,
+}
+
+impl SceneData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::Scene,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -262,4 +288,261 @@ pub enum SceneStatus {
     Inactive,
     Static,
     DynamicPalette,
+}
+
+#[derive(Debug)]
+pub struct SmartScene<'a> {
+    bridge: &'a Bridge,
+    data: SmartSceneData,
+}
+
+impl<'a> SmartScene<'a> {
+    pub fn new(bridge: &'a Bridge, data: SmartSceneData) -> Self {
+        SmartScene { bridge, data }
+    }
+
+    pub fn data(&self) -> &SmartSceneData {
+        &self.data
+    }
+
+    pub fn id(&self) -> &str {
+        &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
+    }
+
+    pub fn name(&self) -> &str {
+        &self.data.metadata.name
+    }
+
+    pub fn image(&self) -> Option<&ResourceIdentifier> {
+        self.data.metadata.image.as_ref()
+    }
+
+    pub fn group(&self) -> ResourceIdentifier {
+        self.data.group.to_owned()
+    }
+
+    pub fn builder(name: impl Into<String>, group: ResourceIdentifier) -> SmartSceneBuilder {
+        SmartSceneBuilder::new(name, group)
+    }
+
+    pub async fn activate(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        self.send(&[SmartSceneCommand::On(true)]).await
+    }
+
+    pub async fn deactivate(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        self.send(&[SmartSceneCommand::On(false)]).await
+    }
+
+    pub async fn send(
+        &self,
+        commands: &[SmartSceneCommand],
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let payload = merge_commands(commands);
+        self.bridge.api.put_smart_scene(self.id(), &payload).await
+    }
+
+    // pub async fn delete(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+    //     self.api.delete_scene(self.id()).await
+    // }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SmartSceneData {
+    /// Unique identifier representing a specific resource instance.
+    pub id: String,
+    /// Clip v1 resource identifier.
+    pub id_v1: Option<String>,
+    pub metadata: SceneMetadata,
+    /// Group associated with this Scene. All services in the group are part of this scene.
+    /// If the group is changed the scene is updated (e.g. light added/removed).
+    pub group: ResourceIdentifier,
+    /// Information on what is the light state for every timeslot of the day.
+    pub week_timeslots: Vec<Schedule>,
+    /// Duration of the transition from on one timeslot's scene to the other in ms (defaults to 60000ms).
+    pub transition_duration: usize,
+    /// The active time slot in execution.
+    pub active_timeslot: Option<ActiveTimeslot>,
+    /// The current state of the smart scene. The default state is [SmartSceneStatus::Inactive] if no recall is provided.
+    pub state: SmartSceneStatus,
+}
+
+impl SmartSceneData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::SmartScene,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Schedule {
+    pub timeslots: Vec<SmartSceneTimeslot>,
+    pub recurrence: HashSet<Weekday>,
+}
+
+impl Schedule {
+    pub fn new() -> Self {
+        Schedule {
+            timeslots: Default::default(),
+            recurrence: Default::default(),
+        }
+    }
+
+    pub fn on(mut self, days: &[Weekday]) -> Self {
+        self.recurrence = days.iter().map(|w| w.to_owned()).collect();
+        self
+    }
+
+    pub fn at(mut self, time: TimeslotStart, scene_rid: ResourceIdentifier) -> Self {
+        let s = SmartSceneTimeslot {
+            start_time: time,
+            target: scene_rid,
+        };
+        self.timeslots.push(s);
+        self
+    }
+
+    pub fn monday(mut self) -> Self {
+        self.recurrence.insert(Weekday::Monday);
+        self
+    }
+
+    pub fn tuesday(mut self) -> Self {
+        self.recurrence.insert(Weekday::Tuesday);
+        self
+    }
+
+    pub fn wednesday(mut self) -> Self {
+        self.recurrence.insert(Weekday::Wednesday);
+        self
+    }
+
+    pub fn thursday(mut self) -> Self {
+        self.recurrence.insert(Weekday::Thursday);
+        self
+    }
+
+    pub fn friday(mut self) -> Self {
+        self.recurrence.insert(Weekday::Friday);
+        self
+    }
+
+    pub fn saturday(mut self) -> Self {
+        self.recurrence.insert(Weekday::Saturday);
+        self
+    }
+
+    pub fn sunday(mut self) -> Self {
+        self.recurrence.insert(Weekday::Sunday);
+        self
+    }
+
+    pub fn build(self) -> SmartSceneCommand {
+        SmartSceneCommand::Schedule(vec![Schedule {
+            timeslots: self.timeslots,
+            recurrence: self.recurrence,
+        }])
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SmartSceneTimeslot {
+    pub start_time: TimeslotStart,
+    pub target: ResourceIdentifier,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum TimeslotStart {
+    Sunset,
+    Time { time: TimeslotTime },
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct TimeslotTime {
+    /// `0` to `23`
+    hour: u8,
+    /// `0` to `59`
+    minute: u8,
+    /// `0` to `59`
+    second: u8,
+}
+
+impl TimeslotStart {
+    pub fn time(hms: &[u8; 3]) -> TimeslotStart {
+        TimeslotStart::Time {
+            time: TimeslotTime {
+                hour: hms[0],
+                minute: hms[1],
+                second: hms[2],
+            },
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct ActiveTimeslot {
+    pub timeslot_id: usize,
+    pub weekday: Weekday,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Weekday {
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum SmartSceneStatus {
+    Active,
+    Inactive,
+}
+
+#[derive(Serialize)]
+pub struct SmartSceneBuilder {
+    metadata: SceneMetadata,
+    group: ResourceIdentifier,
+    transition_duration: usize,
+    week_timeslots: Vec<Schedule>,
+}
+
+impl SmartSceneBuilder {
+    pub fn new(name: impl Into<String>, group: ResourceIdentifier) -> Self {
+        SmartSceneBuilder {
+            metadata: SceneMetadata {
+                name: name.into(),
+                ..Default::default()
+            },
+            group,
+            transition_duration: 0,
+            week_timeslots: Default::default(),
+        }
+    }
+
+    pub fn image(mut self, image: ResourceIdentifier) -> Self {
+        self.metadata.image = Some(image);
+        self
+    }
+
+    pub fn transition_duration(mut self, ms: usize) -> Self {
+        self.transition_duration = ms;
+        self
+    }
+
+    pub fn schedule(mut self, s: Schedule) -> Self {
+        self.week_timeslots.push(s);
+        self
+    }
 }

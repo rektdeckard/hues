@@ -1,29 +1,34 @@
 use super::resource::{ResourceIdentifier, ResourceType};
 use crate::{
-    api::{BridgeClient, HueAPIError},
+    api::HueAPIError,
     command::{merge_commands, DeviceCommand},
+    Bridge,
 };
 use serde::{Deserialize, Serialize};
 
 pub struct Device<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: DeviceData,
 }
 
 impl<'a> Device<'a> {
-    pub fn new(api: &'a BridgeClient, data: DeviceData) -> Self {
-        Device { api, data }
+    pub fn new(bridge: &'a Bridge, data: DeviceData) -> Self {
+        Device { bridge, data }
     }
 
     pub fn data(&self) -> &DeviceData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
     }
 
-    pub fn name(&self) -> &String {
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
+    }
+
+    pub fn name(&self) -> &str {
         &self.data.metadata.name
     }
 
@@ -40,7 +45,7 @@ impl<'a> Device<'a> {
         commands: &[DeviceCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_device(self.id(), &payload).await
+        self.bridge.api.put_device(self.id(), &payload).await
     }
 }
 
@@ -56,6 +61,15 @@ pub struct DeviceData {
     pub usertest: Option<UserTest>,
     /// References all services providing control and state of the device.
     pub services: Vec<ResourceIdentifier>,
+}
+
+impl DeviceData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::Device,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -168,8 +182,12 @@ impl DevicePower {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 
     pub fn battery_state(&self) -> Option<BatteryState> {
@@ -181,7 +199,7 @@ impl DevicePower {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DevicePowerData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
@@ -192,13 +210,22 @@ pub struct DevicePowerData {
     pub power_state: PowerState,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+impl DevicePowerData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::DevicePower,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PowerState {
     battery_state: Option<BatteryState>,
     battery_level: Option<f32>,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BatteryState {
     Normal,
@@ -229,4 +256,6 @@ pub struct DeviceSoftwareUpdateData {
 #[serde(rename_all = "snake_case")]
 pub enum SoftwareUpdateStatus {
     NoUpdate,
+    UpdatePending,
+    Installing,
 }

@@ -13,6 +13,7 @@ use crate::{
         zigbee::ZigbeeChannel,
         zone::ZoneArchetype,
     },
+    Schedule, SmartSceneTimeslot, Weekday,
 };
 use json_patch::merge;
 use serde::{ser::SerializeMap, Serialize};
@@ -719,7 +720,48 @@ impl Serialize for SceneCommand {
     }
 }
 
-pub struct SmartSceneCommand;
+pub enum SmartSceneCommand {
+    On(bool),
+    Metadata {
+        name: Option<String>,
+        appdata: Option<String>,
+    },
+    Schedule(Vec<Schedule>),
+    TransitionDuration(usize),
+}
+
+impl SmartSceneCommand {
+    pub fn create_schedule() -> Schedule {
+        Schedule::new()
+    }
+}
+
+impl Serialize for SmartSceneCommand {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(None)?;
+        match self {
+            Self::On(b) => {
+                map.serialize_entry(
+                    "recall",
+                    &json!({ "action": if *b { "activate" } else { "deactivate"} }),
+                )?;
+            }
+            Self::Metadata { name, appdata } => {
+                map.serialize_entry("metadata", &json!({ "name": name, "appdata": appdata}))?;
+            }
+            Self::Schedule(ts) => {
+                map.serialize_entry("week_timeslots", ts)?;
+            }
+            Self::TransitionDuration(ms) => {
+                map.serialize_entry("transition_duration", ms)?;
+            }
+        }
+        map.end()
+    }
+}
 
 pub struct TamperCommand;
 

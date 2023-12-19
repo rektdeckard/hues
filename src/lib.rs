@@ -8,6 +8,7 @@
 
 pub mod api;
 mod command;
+mod event;
 mod service;
 
 pub use command::*;

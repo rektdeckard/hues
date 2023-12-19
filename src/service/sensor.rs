@@ -1,9 +1,10 @@
 use super::{
+    bridge::Bridge,
     device::SetStatus,
     resource::{ResourceIdentifier, ResourceType},
 };
 use crate::{
-    api::{BridgeClient, HueAPIError},
+    api::HueAPIError,
     command::{
         merge_commands, BasicCommand, GeofenceClientCommand, GeolocationCommand, MotionCommand,
     },
@@ -11,22 +12,97 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
+pub struct Contact<'a> {
+    bridge: &'a Bridge,
+    data: ContactData,
+}
+
+impl<'a> Contact<'a> {
+    pub fn new(bridge: &'a Bridge, data: ContactData) -> Self {
+        Contact { bridge, data }
+    }
+
+    pub fn data(&self) -> &ContactData {
+        &self.data
+    }
+
+    pub fn id(&self) -> &str {
+        &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
+    }
+
+    pub async fn send(
+        &self,
+        commands: &[BasicCommand],
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let payload = merge_commands(commands);
+        self.bridge.api.put_contact(self.id(), &payload).await
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct ContactData {
+    /// Unique identifier representing a specific resource instance.
+    pub id: String,
+    /// Clip v1 resource identifier.
+    pub id_v1: Option<String>,
+    /// Owner of the service, in case the owner service is deleted, the service also gets deleted.
+    pub owner: ResourceIdentifier,
+    /// Whether sensor is activated or not.
+    pub enabled: bool,
+    pub contact_report: Option<ContactReport>,
+}
+
+impl ContactData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::Contact,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct ContactReport {
+    /// Last time the value of this property was updated.
+    pub changed: String,
+    pub state: ContactStatus,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ContactStatus {
+    Contact,
+    NoContact,
+}
+
+#[derive(Debug)]
 pub struct Motion<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: MotionData,
 }
 
 impl<'a> Motion<'a> {
-    pub fn new(api: &'a BridgeClient, data: MotionData) -> Self {
-        Motion { api, data }
+    pub fn new(bridge: &'a Bridge, data: MotionData) -> Self {
+        Motion { bridge, data }
     }
 
     pub fn data(&self) -> &MotionData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id().to_owned(),
+            rtype: ResourceType::Motion,
+        }
     }
 
     pub async fn send(
@@ -34,27 +110,34 @@ impl<'a> Motion<'a> {
         commands: &[MotionCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_motion(self.id(), &payload).await
+        self.bridge.api.put_motion(self.id(), &payload).await
     }
 }
 
 #[derive(Debug)]
 pub struct CameraMotion<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: MotionData,
 }
 
 impl<'a> CameraMotion<'a> {
-    pub fn new(api: &'a BridgeClient, data: MotionData) -> Self {
-        CameraMotion { api, data }
+    pub fn new(bridge: &'a Bridge, data: MotionData) -> Self {
+        CameraMotion { bridge, data }
     }
 
     pub fn data(&self) -> &MotionData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id().to_owned(),
+            rtype: ResourceType::CameraMotion,
+        }
     }
 
     pub async fn send(
@@ -62,7 +145,7 @@ impl<'a> CameraMotion<'a> {
         commands: &[MotionCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_camera_motion(self.id(), &payload).await
+        self.bridge.api.put_camera_motion(self.id(), &payload).await
     }
 }
 
@@ -107,21 +190,25 @@ pub struct Sensitivity {
 
 #[derive(Debug)]
 pub struct Temperature<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: TemperatureData,
 }
 
 impl<'a> Temperature<'a> {
-    pub fn new(api: &'a BridgeClient, data: TemperatureData) -> Self {
-        Temperature { api, data }
+    pub fn new(bridge: &'a Bridge, data: TemperatureData) -> Self {
+        Temperature { bridge, data }
     }
 
     pub fn data(&self) -> &TemperatureData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 
     pub async fn send(
@@ -129,7 +216,7 @@ impl<'a> Temperature<'a> {
         commands: &[BasicCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_temperature(self.id(), &payload).await
+        self.bridge.api.put_temperature(self.id(), &payload).await
     }
 }
 
@@ -144,6 +231,15 @@ pub struct TemperatureData {
     /// Whether sensor is activated or not.
     pub enabled: bool,
     pub temperature: TemperatureState,
+}
+
+impl TemperatureData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::Temperature,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -164,21 +260,25 @@ pub struct TemperatureReport {
 
 #[derive(Debug)]
 pub struct LightLevel<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: LightLevelData,
 }
 
 impl<'a> LightLevel<'a> {
-    pub fn new(api: &'a BridgeClient, data: LightLevelData) -> Self {
-        LightLevel { api, data }
+    pub fn new(bridge: &'a Bridge, data: LightLevelData) -> Self {
+        LightLevel { bridge, data }
     }
 
     pub fn data(&self) -> &LightLevelData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 
     pub async fn send(
@@ -186,7 +286,7 @@ impl<'a> LightLevel<'a> {
         commands: &[BasicCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_light_level(self.id(), &payload).await
+        self.bridge.api.put_light_level(self.id(), &payload).await
     }
 }
 
@@ -201,6 +301,15 @@ pub struct LightLevelData {
     /// Whether sensor is activated or not.
     pub enabled: bool,
     pub light: LightLevelState,
+}
+
+impl LightLevelData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::LightLevel,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -225,21 +334,25 @@ pub struct LightLevelReport {
 
 #[derive(Debug)]
 pub struct Geolocation<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: GeolocationData,
 }
 
 impl<'a> Geolocation<'a> {
-    pub fn new(api: &'a BridgeClient, data: GeolocationData) -> Self {
-        Geolocation { api, data }
+    pub fn new(bridge: &'a Bridge, data: GeolocationData) -> Self {
+        Geolocation { bridge, data }
     }
 
     pub fn data(&self) -> &GeolocationData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 
     pub async fn send(
@@ -247,7 +360,7 @@ impl<'a> Geolocation<'a> {
         commands: &[GeolocationCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_geolocation(self.id(), &payload).await
+        self.bridge.api.put_geolocation(self.id(), &payload).await
     }
 }
 
@@ -261,6 +374,15 @@ pub struct GeolocationData {
     pub is_configured: bool,
     /// Info related to today's sun (only available when geolocation has been configured).
     pub sun_today: Option<SunToday>,
+}
+
+impl GeolocationData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::Geolocation,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -279,21 +401,25 @@ pub enum DayType {
 
 #[derive(Debug)]
 pub struct GeofenceClient<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: GeofenceClientData,
 }
 
 impl<'a> GeofenceClient<'a> {
-    pub fn new(api: &'a BridgeClient, data: GeofenceClientData) -> Self {
-        GeofenceClient { api, data }
+    pub fn new(bridge: &'a Bridge, data: GeofenceClientData) -> Self {
+        GeofenceClient { bridge, data }
     }
 
     pub fn data(&self) -> &GeofenceClientData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 
     pub async fn send(
@@ -301,7 +427,10 @@ impl<'a> GeofenceClient<'a> {
         commands: &[GeofenceClientCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_geofence_client(self.id(), &payload).await
+        self.bridge
+            .api
+            .put_geofence_client(self.id(), &payload)
+            .await
     }
 }
 
@@ -312,6 +441,15 @@ pub struct GeofenceClientData {
     /// Clip v1 resource identifier.
     pub id_v1: Option<String>,
     pub name: String,
+}
+
+impl GeofenceClientData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::GeofenceClient,
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -332,4 +470,64 @@ impl GeofenceClientBuilder {
         self.is_at_home = b;
         self
     }
+}
+
+#[derive(Debug)]
+pub struct Tamper {
+    data: TamperData,
+}
+
+impl Tamper {
+    pub fn new(data: TamperData) -> Self {
+        Tamper { data }
+    }
+
+    pub fn data(&self) -> &TamperData {
+        &self.data
+    }
+
+    pub fn id(&self) -> &str {
+        &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct TamperData {
+    /// Unique identifier representing a specific resource instance.
+    pub id: String,
+    /// Clip v1 resource identifier.
+    pub id_v1: Option<String>,
+    /// Owner of the service, in case the owner service is deleted, the service also gets deleted.
+    pub owner: ResourceIdentifier,
+    pub tamper_reports: Vec<TamperReport>,
+}
+
+impl TamperData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::Tamper,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct TamperReport {
+    /// Last time the value of this property is changed.
+    pub changed: String,
+    /// Source of tamper and time expired since last change of tamper-state.
+    pub source: String,
+    /// The state of tamper after last change.
+    pub state: TamperStatus,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum TamperStatus {
+    Tampered,
+    NotTampered,
 }

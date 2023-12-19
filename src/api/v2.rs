@@ -1,24 +1,29 @@
 use super::{v1::RegisterResponse, HueAPIError, HueAPIResponse};
-use crate::service::{
-    bridge::BridgeData,
-    control::{ButtonData, RelativeRotaryData},
-    device::{DeviceData, DevicePowerData},
-    group::GroupData,
-    light::LightData,
-    resource::{Resource, ResourceIdentifier},
-    scene::SceneData,
-    sensor::{
-        GeofenceClientData, GeolocationData, LightLevelData, MotionData, Temperature,
-        TemperatureData,
+use crate::{
+    service::{
+        behavior::BehaviorScriptData,
+        bridge::BridgeData,
+        control::{ButtonData, RelativeRotaryData},
+        device::{DeviceData, DevicePowerData},
+        group::GroupData,
+        light::LightData,
+        resource::{Resource, ResourceIdentifier},
+        scene::SceneData,
+        sensor::{
+            GeofenceClientData, GeolocationData, LightLevelData, MotionData, Temperature,
+            TemperatureData,
+        },
+        thirdparty::{HomeKitData, MatterData, MatterFabricData},
+        zigbee::{
+            ZGPConnectivity, ZGPConnectivityData, ZigbeeConnectivity, ZigbeeConnectivityData,
+            ZigbeeDeviceDiscoveryData,
+        },
+        zone::{HomeData, ZoneData},
     },
-    thirdparty::{HomeKitData, MatterData, MatterFabricData},
-    zigbee::{
-        ZGPConnectivity, ZGPConnectivityData, ZigbeeConnectivity, ZigbeeConnectivityData,
-        ZigbeeDeviceDiscoveryData,
-    },
-    zone::{HomeData, ZoneData},
+    ContactData, SmartSceneData, TamperData,
 };
-use reqwest::{Client as ReqwestClient, IntoUrl, Method};
+use reqwest::{Client as ReqwestClient, IntoUrl, Method, Response};
+use reqwest_eventsource::EventSource;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::json;
@@ -50,7 +55,7 @@ impl BridgeClient {
         &self.addr
     }
 
-    pub fn app_key(&self) -> &String {
+    pub fn app_key(&self) -> &str {
         &self.app_key
     }
 
@@ -58,7 +63,7 @@ impl BridgeClient {
         &mut self,
         app_name: impl Into<String>,
         instance_name: impl Into<String>,
-    ) -> Result<String, HueAPIError> {
+    ) -> Result<&str, HueAPIError> {
         match self
             .client
             .post(self.api_v1_url())
@@ -70,8 +75,11 @@ impl BridgeClient {
             .await
         {
             Ok(res) => match res.json::<Vec<super::v1::RegisterResponse>>().await {
-                Ok(successes_or_errors) => match successes_or_errors.get(1).unwrap() {
-                    RegisterResponse::Success { success } => Ok(success.username.clone()),
+                Ok(successes_or_errors) => match successes_or_errors.into_iter().nth(1).unwrap() {
+                    RegisterResponse::Success { success } => {
+                        self.app_key = success.username;
+                        return Ok(&self.app_key);
+                    }
                     RegisterResponse::Error { error } => {
                         Err(HueAPIError::HueBridgeError(error.description.clone()))
                     }
@@ -82,8 +90,34 @@ impl BridgeClient {
         }
     }
 
+    pub(crate) async fn delete_app(&self, app_key: impl Into<String>) -> Result<(), HueAPIError> {
+        match self
+            .client
+            .delete(
+                self.api_v1_url() + "/" + &self.app_key + "/config/whitelist/" + &app_key.into(),
+            )
+            .send()
+            .await
+        {
+            Ok(res) => match res.json::<Vec<super::v1::UnregisterResponse>>().await {
+                Ok(successes_or_errors) => match successes_or_errors.into_iter().next().unwrap() {
+                    super::v1::UnregisterResponse::Success(_message) => Ok(()),
+                    super::v1::UnregisterResponse::Error(message) => {
+                        Err(HueAPIError::HueBridgeError(message))
+                    }
+                },
+                _ => Err(HueAPIError::BadDeserialize),
+            },
+            _ => Err(HueAPIError::BadRequest),
+        }
+    }
+
     fn api_url(&self) -> String {
         format!("https://{}{}", &self.addr, PREFIX)
+    }
+
+    fn event_stream_url(&self) -> String {
+        format!("https://{}/eventstream{}", &self.addr, PREFIX)
     }
 
     fn api_v1_url(&self) -> String {
@@ -131,6 +165,18 @@ impl BridgeClient {
         }
     }
 
+    pub(crate) async fn get_event_stream(&self) -> Result<EventSource, HueAPIError> {
+        let req = self
+            .client
+            .request(Method::GET, self.event_stream_url())
+            .header("hue-application-key", &self.app_key);
+
+        match EventSource::new(req) {
+            Ok(es) => Ok(es),
+            Err(_) => Err(HueAPIError::ServerSentEvent),
+        }
+    }
+
     pub(crate) async fn get_bridge(&self) -> Result<BridgeData, HueAPIError> {
         let url = self.api_url() + "/resource/bridge";
         match self
@@ -172,6 +218,21 @@ impl BridgeClient {
         self.make_request(url, Method::GET, None::<()>).await
     }
 
+    pub(crate) async fn get_behavior_script(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<BehaviorScriptData, HueAPIError> {
+        let url = self.api_url() + "/resource/behavior_script/" + &id.into();
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_behavior_scripts(
+        &self,
+    ) -> Result<Vec<BehaviorScriptData>, HueAPIError> {
+        let url = self.api_url() + "/resource/behavior_script";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
     pub(crate) async fn get_button(
         &self,
         id: impl Into<String>,
@@ -183,6 +244,28 @@ impl BridgeClient {
     pub(crate) async fn get_buttons(&self) -> Result<Vec<ButtonData>, HueAPIError> {
         let url = self.api_url() + "/resource/button";
         self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_contact(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<ContactData, HueAPIError> {
+        let url = self.api_url() + "/resource/contact/" + &id.into();
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_contacts(&self) -> Result<Vec<ContactData>, HueAPIError> {
+        let url = self.api_url() + "/resource/contact";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_contact(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/contact/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
     }
 
     pub(crate) async fn get_relative_rotary(
@@ -288,6 +371,19 @@ impl BridgeClient {
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let url = self.api_url() + "/resource/geofence_client/" + &id.into();
         self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn get_tamper(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<TamperData, HueAPIError> {
+        let url = self.api_url() + "/resource/tamper/" + &id.into();
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_tampers(&self) -> Result<Vec<TamperData>, HueAPIError> {
+        let url = self.api_url() + "/resource/tamper";
+        self.make_request(url, Method::GET, None::<()>).await
     }
 
     pub(crate) async fn get_homekit(
@@ -669,6 +765,63 @@ impl BridgeClient {
         id: impl Into<String>,
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let url = self.api_url() + "/resource/scene/" + &id.into();
+        self.make_request(url, Method::DELETE, None::<()>).await
+    }
+
+    pub(crate) async fn get_smart_scene(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<SmartSceneData, HueAPIError> {
+        let url = self.api_url() + "/resource/smart_scene/" + &id.into();
+        match self
+            .make_request::<(), Vec<SmartSceneData>>(url, Method::GET, None::<()>)
+            .await
+        {
+            Ok(data) => match data.into_iter().nth(0) {
+                Some(first) => Ok(first),
+                None => Err(HueAPIError::NotFound),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    pub(crate) async fn get_smart_scenes(&self) -> Result<Vec<SmartSceneData>, HueAPIError> {
+        let url = self.api_url() + "/resource/smart_scene";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_smart_scene(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/smart_scene/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn post_smart_scene(
+        &self,
+        payload: impl Into<serde_json::Value>,
+    ) -> Result<ResourceIdentifier, HueAPIError> {
+        let url = self.api_url() + "/resource/smart_scene";
+        let rids = self
+            .make_request::<serde_json::Value, Vec<ResourceIdentifier>>(
+                url,
+                Method::POST,
+                Some(payload.into()),
+            )
+            .await?;
+        match rids.into_iter().nth(0) {
+            Some(rid) => Ok(rid),
+            None => Err(HueAPIError::BadDeserialize),
+        }
+    }
+
+    pub(crate) async fn delete_smart_scene(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/smart_scene/" + &id.into();
         self.make_request(url, Method::DELETE, None::<()>).await
     }
 

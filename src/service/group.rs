@@ -1,9 +1,10 @@
 use super::{
+    bridge::Bridge,
     light::{AlertState, OnState, SignalType},
     resource::{ResourceIdentifier, ResourceType},
 };
 use crate::{
-    api::{BridgeClient, HueAPIError},
+    api::HueAPIError,
     command::{merge_commands, GroupCommand},
 };
 use serde::{Deserialize, Serialize};
@@ -11,21 +12,25 @@ use std::collections::HashSet;
 
 #[derive(Debug)]
 pub struct Group<'a> {
-    api: &'a BridgeClient,
+    bridge: &'a Bridge,
     data: GroupData,
 }
 
 impl<'a> Group<'a> {
-    pub fn new(api: &'a BridgeClient, data: GroupData) -> Self {
-        Group { api, data }
+    pub fn new(bridge: &'a Bridge, data: GroupData) -> Self {
+        Group { bridge, data }
     }
 
     pub fn data(&self) -> &GroupData {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 
     pub fn is_on(&self) -> Option<bool> {
@@ -37,16 +42,17 @@ impl<'a> Group<'a> {
         commands: &[GroupCommand],
     ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         let payload = merge_commands(commands);
-        self.api.put_grouped_light(self.id(), &payload).await
+        self.bridge.api.put_grouped_light(self.id(), &payload).await
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GroupData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
     /// Clip v1 resource identifier.
     pub id_v1: Option<String>,
+    pub owner: ResourceIdentifier,
     /// Joined on control & aggregated on state.
     /// `on` is true if any light in the group is on.
     pub on: Option<OnState>,
@@ -58,6 +64,15 @@ pub struct GroupData {
     pub signaling: Option<GroupSignalingState>,
 }
 
+impl GroupData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::Group,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GroupDimmingState {
     /// Brightness percentage.
@@ -65,7 +80,7 @@ pub struct GroupDimmingState {
     pub brightness: f32,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GroupSignalingState {
     /// Signals that the group supports.
     pub signal_values: Option<HashSet<SignalType>>,

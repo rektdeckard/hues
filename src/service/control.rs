@@ -1,12 +1,6 @@
-use std::collections::HashSet;
-
 use super::resource::{ResourceIdentifier, ResourceType};
-use crate::{
-    api::{BridgeClient, HueAPIError},
-    command::{merge_commands, MotionCommand},
-    BasicCommand,
-};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 #[derive(Debug)]
 pub struct Button {
@@ -22,8 +16,12 @@ impl Button {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 
     pub fn control_id(&self) -> u8 {
@@ -31,7 +29,7 @@ impl Button {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ButtonData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
@@ -39,12 +37,21 @@ pub struct ButtonData {
     pub id_v1: Option<String>,
     /// Owner of the service, in case the owner service is deleted, the service also gets deleted.
     pub owner: ResourceIdentifier,
-    /// Whether sensor is activated or not.
+    /// Metadata describing this resource.
     pub metadata: ButtonMetadata,
     pub button: ButtonState,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+impl ButtonData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::Button,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ButtonMetadata {
     /// Control identifier of the switch which is unique per device.
     /// In combination with type:
@@ -54,7 +61,7 @@ pub struct ButtonMetadata {
     pub control_id: u8,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ButtonState {
     #[deprecated]
     pub last_event: Option<ButtonEvent>,
@@ -65,7 +72,7 @@ pub struct ButtonState {
     pub event_values: HashSet<ButtonEvent>,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ButtonEvent {
     InitialPress,
@@ -76,7 +83,7 @@ pub enum ButtonEvent {
     LongPress,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ButtonReport {
     /// Last time the value of this property is updated.
     pub updated: String,
@@ -98,8 +105,12 @@ impl RelativeRotary {
         &self.data
     }
 
-    pub fn id(&self) -> &String {
+    pub fn id(&self) -> &str {
         &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
     }
 }
 
@@ -112,6 +123,15 @@ pub struct RelativeRotaryData {
     /// Owner of the service, in case the owner service is deleted, the service also gets deleted.
     pub owner: ResourceIdentifier,
     pub relative_rotary: RelativeRotaryState,
+}
+
+impl RelativeRotaryData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::RelativeRotary,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
