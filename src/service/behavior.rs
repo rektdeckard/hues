@@ -1,5 +1,13 @@
-use super::resource::{ResourceIdentifier, ResourceType};
-use serde::Deserialize;
+use super::{
+    bridge::Bridge,
+    device::BasicMetadata,
+    resource::{ResourceIdentifier, ResourceType},
+};
+use crate::{
+    api::HueAPIError,
+    command::{merge_commands, BehaviorInstanceCommand},
+};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct BehaviorScript {
@@ -100,3 +108,142 @@ pub enum BehaviorScriptType {
 //     #[serde(other)]
 //     Other,
 // }
+
+#[derive(Debug)]
+pub struct BehaviorInstance<'a> {
+    bridge: &'a Bridge,
+    data: BehaviorInstanceData,
+}
+
+impl<'a> BehaviorInstance<'a> {
+    pub fn new(bridge: &'a Bridge, data: BehaviorInstanceData) -> Self {
+        BehaviorInstance { bridge, data }
+    }
+
+    pub fn data(&self) -> &BehaviorInstanceData {
+        &self.data
+    }
+
+    pub fn id(&self) -> &str {
+        &self.data.id
+    }
+
+    pub fn rid(&self) -> ResourceIdentifier {
+        self.data.rid()
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        self.data.enabled
+    }
+
+    pub fn builder(
+        script_id: impl Into<String>,
+        configuration: serde_json::Value,
+    ) -> BehaviorInstanceBuilder {
+        BehaviorInstanceBuilder::new(script_id, configuration)
+    }
+
+    pub async fn send(
+        &self,
+        commands: &[BehaviorInstanceCommand],
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let payload = merge_commands(commands);
+        self.bridge
+            .api
+            .put_behavior_instance(self.id(), &payload)
+            .await
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct BehaviorInstanceData {
+    /// Unique identifier representing a specific resource instance.
+    pub id: String,
+    /// Clip v1 resource identifier.
+    pub id_v1: Option<String>,
+    /// Identifier to ScriptDefinition.
+    pub script_id: String,
+    /// Indicated whether a scripts is enabled.
+    pub enabled: bool,
+    /// Script instance state. This read-only property is according to ScriptDefinition.state_schema JSON schema.
+    pub state: Option<serde_json::Value>,
+    /// Script instance state. This read-only property is according to ScriptDefinition.state_schema JSON schema.
+    pub configuration: serde_json::Value,
+    /// Represents all resources which this instance depends on.
+    pub dependees: Vec<ResourceDependee>,
+    /// Script status. If the script is in the errored state then check errors for more details about the error.
+    pub status: BehaviorInstanceStatus,
+    /// Last error happened while executing the script.
+    pub last_error: Option<String>,
+    pub metadata: BasicMetadata,
+    /// Clip v1 resource identifier.
+    pub migrated_from: Option<String>,
+}
+
+impl BehaviorInstanceData {
+    pub fn rid(&self) -> ResourceIdentifier {
+        ResourceIdentifier {
+            rid: self.id.to_owned(),
+            rtype: ResourceType::BehaviorScript,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ResourceDependee {
+    target: ResourceIdentifier,
+    level: ResourceDependeeImportance,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResourceDependeeImportance {
+    Critical,
+    NonCritical,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BehaviorInstanceStatus {
+    Initializing,
+    Running,
+    Disabled,
+    Errored,
+}
+
+#[derive(Serialize)]
+pub struct BehaviorInstanceBuilder {
+    script_id: String,
+    enabled: bool,
+    configuration: serde_json::Value,
+    metadata: BasicMetadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    migrated_from: Option<String>,
+}
+
+impl BehaviorInstanceBuilder {
+    pub fn new(script_id: impl Into<String>, configuration: serde_json::Value) -> Self {
+        BehaviorInstanceBuilder {
+            script_id: script_id.into(),
+            enabled: false,
+            configuration,
+            metadata: BasicMetadata { name: None },
+            migrated_from: None,
+        }
+    }
+
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.metadata.name = Some(name.into());
+        self
+    }
+
+    pub fn migrated_from(mut self, id: impl Into<String>) -> Self {
+        self.migrated_from = Some(id.into());
+        self
+    }
+
+    pub fn enabled(mut self, enabled: bool) -> Self {
+        self.enabled = enabled;
+        self
+    }
+}

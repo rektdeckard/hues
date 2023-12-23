@@ -12,6 +12,7 @@ mod event;
 mod service;
 
 pub use command::*;
+pub use service::behavior::*;
 pub use service::bridge::*;
 pub use service::control::*;
 pub use service::device::*;
