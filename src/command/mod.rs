@@ -9,11 +9,10 @@ use crate::{
             ParseColorError, PowerupOnState, PowerupPresetType, SignalType, TimedEffectType,
         },
         resource::ResourceIdentifier,
-        scene::{SceneAction, ScenePalette, SceneStatus},
+        scene::{SceneAction, ScenePalette, SceneStatus, Schedule},
         zigbee::ZigbeeChannel,
         zone::ZoneArchetype,
     },
-    Schedule, SmartSceneTimeslot, Weekday,
 };
 use json_patch::merge;
 use serde::{ser::SerializeMap, Serialize};
@@ -46,12 +45,20 @@ impl<'b> CommandBuilder<'b> {
         self
     }
 
-    pub async fn send(&self) -> Result<(), HueAPIError> {
+    pub async fn send(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let mut changes = vec![];
+
         for cmd in &self.commands {
             match cmd {
                 CommandType::Light(id, lc) => match lc {
                     LightCommand::Identify => {
-                        todo!()
+                        todo!();
+                        // let res = self
+                        //     .bridge
+                        //     .api
+                        //     .put_light(id, &serde_json::to_value(lc).unwrap())
+                        //     .await?;
+                        // changes.extend(res);
                     }
                     _ => todo!(),
                 },
@@ -59,7 +66,7 @@ impl<'b> CommandBuilder<'b> {
             }
         }
 
-        Ok(())
+        Ok(changes)
     }
 }
 
@@ -71,7 +78,6 @@ pub enum CommandType {
     Contact(BasicCommand),
     Device(DeviceCommand),
     DevicePower(DevicePowerCommand),
-    Entertainment(EntertainmentCommand),
     EntertainmentConfiguration(EntertainmentConfigurationCommand),
     GeofenceClient(GeofenceClientCommand),
     Geolocation(GeolocationCommand),
@@ -99,7 +105,21 @@ pub enum BasicCommand {
     Enabled(bool),
 }
 
-pub struct BehaviorInstanceCommand;
+#[derive(Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BehaviorInstanceCommand {
+    /// Indicated whether a scripts is enabled.
+    Enabled(bool),
+    /// Script configuration.
+    /// This property is validated using ScriptDefinition.configuration_schema JSON schema.
+    Configuration(serde_json::Value),
+    /// Action that needs to be taken by this script instance.
+    /// This property is validated using ScriptDefinition.trigger_schema JSON schema.
+    Trigger(serde_json::Value),
+    Metadata {
+        name: String,
+    },
+}
 
 pub struct BridgeCommand;
 
@@ -142,9 +162,18 @@ impl Serialize for DeviceCommand {
 
 pub struct DevicePowerCommand;
 
-pub struct EntertainmentCommand;
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EntertainmentConfigurationCommand {
+    Action(EntertainmentAction),
+}
 
-pub struct EntertainmentConfigurationCommand;
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EntertainmentAction {
+    Start,
+    Stop,
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -313,7 +342,7 @@ pub enum LightCommand {
         duration: Option<usize>,
         /// Speed of dynamic palette or effect.
         ///
-        /// The speed is valid for the dynamic palette if the status is [DynamicsStatus::DynamicPalette](crate::api::DynamicsStatus::DynamicPalette)
+        /// The speed is valid for the dynamic palette if the status is [DynamicsStatus::DynamicPalette](crate::service::light::DynamicsStatus::DynamicPalette)
         /// or for the corresponding effect listed in status. In case of status [None], the speed is not valid.
         speed: Option<f32>,
     },

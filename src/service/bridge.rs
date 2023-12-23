@@ -1,7 +1,14 @@
 use super::{
-    behavior::{BehaviorScript, BehaviorScriptData},
+    behavior::{
+        BehaviorInstance, BehaviorInstanceBuilder, BehaviorInstanceData, BehaviorScript,
+        BehaviorScriptData,
+    },
     control::{Button, RelativeRotary},
     device::{Device, DevicePower},
+    entertainment::{
+        Entertainment, EntertainmentConfiguration, EntertainmentConfigurationData,
+        EntertainmentData,
+    },
     group::Group,
     light::Light,
     resource::{ResourceIdentifier, ResourceType},
@@ -65,7 +72,22 @@ pub struct Bridge {
 
 impl Bridge {
     pub fn new(addr: impl Into<IpAddr>, app_key: impl Into<String>) -> Self {
-        let api = BridgeClient::new(addr.into(), app_key.into());
+        let api = BridgeClient::new(addr, app_key);
+        Bridge {
+            api: Box::new(api),
+            cache: Arc::new(Mutex::new(BridgeCache::default())),
+            poll_handle: None,
+            #[cfg(feature = "sse")]
+            listen_handle: None,
+        }
+    }
+
+    pub fn new_streaming(
+        addr: impl Into<IpAddr>,
+        app_key: impl Into<String>,
+        client_key: impl Into<String>,
+    ) -> Self {
+        let api = BridgeClient::new_with_streaming(addr, app_key, client_key);
         Bridge {
             api: Box::new(api),
             cache: Arc::new(Mutex::new(BridgeCache::default())),
@@ -136,7 +158,7 @@ impl Bridge {
             insert_to_cache(&mut cache.lock().expect("lock cache"), data)
         }
 
-        self.listen_handle = Some(tokio::spawn(async move {
+        let fut = async move {
             use futures_util::StreamExt;
             use reqwest_eventsource::Event;
 
@@ -150,7 +172,6 @@ impl Bridge {
                                     Ok(data) => {
                                         let mut cache = cache.lock().expect("lock cache");
                                         let changes = upsert_to_cache(&mut cache, data);
-                                        dbg!(&changes);
                                         cb(changes);
                                     }
                                     Err(e) => {
@@ -168,17 +189,17 @@ impl Bridge {
                     dbg!(e);
                 }
             }
-        }));
+        };
 
+        self.listen_handle = Some(tokio::spawn(fut));
         self
     }
 
     #[cfg(feature = "sse")]
     pub fn unlisten(&mut self) {
-        if let Some(handle) = &self.listen_handle {
+        if let Some(handle) = &self.listen_handle.take() {
             handle.abort();
         }
-        self.listen_handle = None;
     }
 
     pub fn command(&self) -> CommandBuilder {
@@ -198,7 +219,7 @@ impl Bridge {
         self.api.delete_app(app_key).await
     }
 
-    pub fn config(&self) -> Option<BridgeData> {
+    pub fn data(&self) -> Option<BridgeData> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -212,6 +233,11 @@ impl Bridge {
         let mut cache = self.cache.lock().expect("lock cache");
         insert_to_cache(&mut cache, data);
         Ok(())
+    }
+
+    #[cfg(feature = "streaming")]
+    pub async fn initialize_streaming(&self, ent_id: impl Into<String>) -> Result<(), HueAPIError> {
+        self.api.open_stream(ent_id).await
     }
 
     pub fn behavior_script(&self, id: impl Into<String>) -> Option<BehaviorScript> {
@@ -231,6 +257,118 @@ impl Bridge {
             .iter()
             .map(|(_, data)| BehaviorScript::new(data.clone()))
             .collect()
+    }
+
+    pub fn behavior_instance(&self, id: impl Into<String>) -> Option<BehaviorInstance> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .behavior_instances
+            .get(&id.into())
+            .map(|data| BehaviorInstance::new(&self, data.clone()))
+    }
+
+    pub fn behavior_instances(&self) -> Vec<BehaviorInstance> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .behavior_instances
+            .iter()
+            .map(|(_, data)| BehaviorInstance::new(&self, data.clone()))
+            .collect()
+    }
+
+    pub async fn create_behavior_instance(
+        &self,
+        builder: BehaviorInstanceBuilder,
+    ) -> Result<BehaviorInstance, HueAPIError> {
+        let rid = self
+            .api
+            .post_behavior_instance(serde_json::to_value(builder).unwrap())
+            .await?;
+        let data = self.api.get_behavior_instance(rid.rid).await?;
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .behavior_instances
+            .insert(data.id.clone(), data.clone());
+        Ok(BehaviorInstance::new(&self, data))
+    }
+
+    pub async fn delete_behavior_instance(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let res = self.api.delete_behavior_instance(id).await?;
+        delete_from_cache(&mut self.cache.lock().expect("lock cache"), &res);
+        Ok(res)
+    }
+
+    pub fn entertainment_configuration(
+        &self,
+        id: impl Into<String>,
+    ) -> Option<EntertainmentConfiguration> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .entertainment_configurations
+            .get(&id.into())
+            .map(|data| EntertainmentConfiguration::new(&self, data.clone()))
+    }
+
+    pub fn entertainment_configurations(&self) -> Vec<EntertainmentConfiguration> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .entertainment_configurations
+            .iter()
+            .map(|(_, data)| EntertainmentConfiguration::new(&self, data.clone()))
+            .collect()
+    }
+
+    pub fn entertainment(&self, id: impl Into<String>) -> Option<Entertainment> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .entertainments
+            .get(&id.into())
+            .map(|data| Entertainment::new(data.clone()))
+    }
+
+    pub fn entertainments(&self) -> Vec<Entertainment> {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .entertainments
+            .iter()
+            .map(|(_, data)| Entertainment::new(data.clone()))
+            .collect()
+    }
+
+    pub async fn create_entertainment_configuration(
+        &self,
+        builder: (),
+    ) -> Result<EntertainmentConfiguration, HueAPIError> {
+        let rid = self
+            .api
+            .post_entertainment_configuration(serde_json::to_value(builder).unwrap())
+            .await?;
+        let data = self.api.get_entertainment_configuration(rid.rid).await?;
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .entertainment_configurations
+            .insert(data.id.clone(), data.clone());
+        Ok(EntertainmentConfiguration::new(&self, data))
+    }
+
+    pub async fn delete_entertainment_configuration(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let res = self.api.delete_entertainment_configuration(id).await?;
+        delete_from_cache(&mut self.cache.lock().expect("lock cache"), &res);
+        Ok(res)
     }
 
     pub fn button(&self, id: impl Into<String>) -> Option<Button> {
@@ -354,7 +492,7 @@ impl Bridge {
         Ok(res)
     }
 
-    pub async fn homekit(&self, id: impl Into<String>) -> Option<HomeKit> {
+    pub fn homekit(&self, id: impl Into<String>) -> Option<HomeKit> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -363,7 +501,7 @@ impl Bridge {
             .map(|data| HomeKit::new(&self, data.clone()))
     }
 
-    pub async fn homekits(&self) -> Vec<HomeKit> {
+    pub fn homekits(&self) -> Vec<HomeKit> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -373,7 +511,7 @@ impl Bridge {
             .collect()
     }
 
-    pub async fn matter(&self, id: impl Into<String>) -> Option<Matter> {
+    pub fn matter(&self, id: impl Into<String>) -> Option<Matter> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -382,7 +520,7 @@ impl Bridge {
             .map(|data| Matter::new(&self, data.clone()))
     }
 
-    pub async fn matters(&self) -> Vec<Matter> {
+    pub fn matters(&self) -> Vec<Matter> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -392,7 +530,7 @@ impl Bridge {
             .collect()
     }
 
-    pub async fn matter_fabric(&self, id: impl Into<String>) -> Option<MatterFabric> {
+    pub fn matter_fabric(&self, id: impl Into<String>) -> Option<MatterFabric> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -401,7 +539,7 @@ impl Bridge {
             .map(|data| MatterFabric::new(data.clone()))
     }
 
-    pub async fn matter_fabrics(&self) -> Vec<MatterFabric> {
+    pub fn matter_fabrics(&self) -> Vec<MatterFabric> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -420,7 +558,7 @@ impl Bridge {
         Ok(res)
     }
 
-    pub async fn device(&self, id: impl Into<String>) -> Option<Device> {
+    pub fn device(&self, id: impl Into<String>) -> Option<Device> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -448,7 +586,7 @@ impl Bridge {
         Ok(res)
     }
 
-    pub async fn device_power(&self, id: impl Into<String>) -> Option<DevicePower> {
+    pub fn device_power(&self, id: impl Into<String>) -> Option<DevicePower> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -457,7 +595,7 @@ impl Bridge {
             .map(|data| DevicePower::new(data.clone()))
     }
 
-    pub async fn device_powers(&self) -> Vec<DevicePower> {
+    pub fn device_powers(&self) -> Vec<DevicePower> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -695,7 +833,7 @@ impl Bridge {
         Ok(res)
     }
 
-    pub async fn light_level(&self, id: impl Into<String>) -> Option<LightLevel> {
+    pub fn light_level(&self, id: impl Into<String>) -> Option<LightLevel> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -704,7 +842,7 @@ impl Bridge {
             .map(|data| LightLevel::new(&self, data.clone()))
     }
 
-    pub async fn light_levels(&self) -> Vec<LightLevel> {
+    pub fn light_levels(&self) -> Vec<LightLevel> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -714,7 +852,7 @@ impl Bridge {
             .collect()
     }
 
-    pub async fn temperature(&self, id: impl Into<String>) -> Option<Temperature> {
+    pub fn temperature(&self, id: impl Into<String>) -> Option<Temperature> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -723,7 +861,7 @@ impl Bridge {
             .map(|data| Temperature::new(&self, data.clone()))
     }
 
-    pub async fn temperatures(&self) -> Vec<Temperature> {
+    pub fn temperatures(&self) -> Vec<Temperature> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -733,7 +871,7 @@ impl Bridge {
             .collect()
     }
 
-    pub async fn zgp_connectivity(&self, id: impl Into<String>) -> Option<ZGPConnectivity> {
+    pub fn zgp_connectivity(&self, id: impl Into<String>) -> Option<ZGPConnectivity> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -742,7 +880,7 @@ impl Bridge {
             .map(|data| ZGPConnectivity::new(data.clone()))
     }
 
-    pub async fn zgp_connectivities(&self) -> Vec<ZGPConnectivity> {
+    pub fn zgp_connectivities(&self) -> Vec<ZGPConnectivity> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -752,7 +890,7 @@ impl Bridge {
             .collect()
     }
 
-    pub async fn zigbee_connectivity(&self, id: impl Into<String>) -> Option<ZigbeeConnectivity> {
+    pub fn zigbee_connectivity(&self, id: impl Into<String>) -> Option<ZigbeeConnectivity> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -761,7 +899,7 @@ impl Bridge {
             .map(|data| ZigbeeConnectivity::new(&self, data.clone()))
     }
 
-    pub async fn zigbee_connectivities(&self) -> Vec<ZigbeeConnectivity> {
+    pub fn zigbee_connectivities(&self) -> Vec<ZigbeeConnectivity> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -771,10 +909,7 @@ impl Bridge {
             .collect()
     }
 
-    pub async fn zigbee_device_discovery(
-        &self,
-        id: impl Into<String>,
-    ) -> Option<ZigbeeDeviceDiscovery> {
+    pub fn zigbee_device_discovery(&self, id: impl Into<String>) -> Option<ZigbeeDeviceDiscovery> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -783,7 +918,7 @@ impl Bridge {
             .map(|data| ZigbeeDeviceDiscovery::new(&self, data.clone()))
     }
 
-    pub async fn zigbee_device_discoveries(&self) -> Vec<ZigbeeDeviceDiscovery> {
+    pub fn zigbee_device_discoveries(&self) -> Vec<ZigbeeDeviceDiscovery> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -793,7 +928,7 @@ impl Bridge {
             .collect()
     }
 
-    pub async fn zzone(&self, id: impl Into<String>) -> Option<Zone> {
+    pub fn zone(&self, id: impl Into<String>) -> Option<Zone> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -802,7 +937,7 @@ impl Bridge {
             .map(|data| Zone::new(&self, data.clone()))
     }
 
-    pub async fn zones(&self) -> Vec<Zone> {
+    pub fn zones(&self) -> Vec<Zone> {
         self.cache
             .lock()
             .expect("lock cache")
@@ -858,6 +993,7 @@ pub struct TimeZone {
 pub struct BridgeBuilder {
     addr: Option<IpAddr>,
     app_key: Option<String>,
+    client_key: Option<String>,
     version: Version,
 }
 
@@ -866,6 +1002,7 @@ impl Default for BridgeBuilder {
         BridgeBuilder {
             addr: None,
             app_key: None,
+            client_key: None,
             version: Default::default(),
         }
     }
@@ -921,6 +1058,11 @@ impl BridgeBuilder {
         self
     }
 
+    pub fn client_key(mut self, key: &str) -> Self {
+        self.client_key = Some(key.into());
+        self
+    }
+
     pub fn version(mut self, v: Version) -> Self {
         self.version = v;
         self
@@ -930,7 +1072,11 @@ impl BridgeBuilder {
         let addr = self.addr.unwrap_or([0u8, 0, 0, 0].into());
         let app_key = self.app_key.unwrap_or_default();
         let api = if self.version == Version::V2 {
-            BridgeClient::new(addr, app_key)
+            if self.client_key.is_some() {
+                BridgeClient::new_with_streaming(addr, app_key, self.client_key.unwrap())
+            } else {
+                BridgeClient::new(addr, app_key)
+            }
         } else {
             todo!()
         };
@@ -967,6 +1113,23 @@ fn upsert_to_cache(
                                 let data: DevicePowerData = merge_resource_data(data, patch);
                                 changes.insert(data.rid());
                                 cache.power.insert(id, data);
+                            }
+                        }
+                        HueEventData::EntertainmentConfiguration(patch) => {
+                            let id = patch.get("id").expect("no id").as_str().unwrap().to_owned();
+                            if let Some(data) = cache.entertainment_configurations.get(&id) {
+                                let data: EntertainmentConfigurationData =
+                                    merge_resource_data(data, patch);
+                                changes.insert(data.rid());
+                                cache.entertainment_configurations.insert(id, data);
+                            }
+                        }
+                        HueEventData::Entertainment(patch) => {
+                            let id = patch.get("id").expect("no id").as_str().unwrap().to_owned();
+                            if let Some(data) = cache.entertainments.get(&id) {
+                                let data: EntertainmentData = merge_resource_data(data, patch);
+                                changes.insert(data.rid());
+                                cache.entertainments.insert(id, data);
                             }
                         }
                         HueEventData::Group(patch) => {
@@ -1019,9 +1182,12 @@ fn merge_resource_data<D: DeserializeOwned, S: Serialize>(data: S, patch: serde_
 pub(crate) struct BridgeCache {
     data: Option<BridgeData>,
     behavior_scripts: HashMap<String, BehaviorScriptData>,
+    behavior_instances: HashMap<String, BehaviorInstanceData>,
     buttons: HashMap<String, ButtonData>,
     contacts: HashMap<String, ContactData>,
     devices: HashMap<String, DeviceData>,
+    entertainment_configurations: HashMap<String, EntertainmentConfigurationData>,
+    entertainments: HashMap<String, EntertainmentData>,
     geofence_clients: HashMap<String, GeofenceClientData>,
     geolocations: HashMap<String, GeolocationData>,
     groups: HashMap<String, GroupData>,
@@ -1054,6 +1220,9 @@ fn insert_to_cache(cache: &mut MutexGuard<'_, BridgeCache>, data: Vec<Resource>)
             Resource::BehaviorScript(d) => {
                 cache.behavior_scripts.insert(d.id.clone(), d);
             }
+            Resource::BehaviorInstance(d) => {
+                cache.behavior_instances.insert(d.id.clone(), d);
+            }
             Resource::Bridge(d) => {
                 cache.data = Some(d);
             }
@@ -1077,6 +1246,12 @@ fn insert_to_cache(cache: &mut MutexGuard<'_, BridgeCache>, data: Vec<Resource>)
             }
             Resource::DeviceSoftwareUpdate(d) => {
                 cache.swu.insert(d.id.clone(), d);
+            }
+            Resource::EntertainmentConfiguration(d) => {
+                cache.entertainment_configurations.insert(d.id.clone(), d);
+            }
+            Resource::Entertainment(d) => {
+                cache.entertainments.insert(d.id.clone(), d);
             }
             Resource::GeofenceClient(d) => {
                 cache.geofence_clients.insert(d.id.clone(), d);
@@ -1162,7 +1337,7 @@ fn delete_from_cache(cache: &mut MutexGuard<'_, BridgeCache>, data: &Vec<Resourc
                 todo!()
             }
             ResourceType::BehaviorInstance => {
-                todo!()
+                cache.behavior_instances.retain(|id, _| !ids.contains(&id));
             }
             ResourceType::BehaviorScript => {
                 cache.behavior_scripts.retain(|id, _| !ids.contains(&id));
@@ -1193,10 +1368,12 @@ fn delete_from_cache(cache: &mut MutexGuard<'_, BridgeCache>, data: &Vec<Resourc
                 cache.swu.retain(|id, _| !ids.contains(&id));
             }
             ResourceType::Entertainment => {
-                todo!()
+                cache.entertainments.retain(|id, _| !ids.contains(&id));
             }
             ResourceType::EntertainmentConfiguration => {
-                todo!()
+                cache
+                    .entertainment_configurations
+                    .retain(|id, _| !ids.contains(&id));
             }
             ResourceType::Geofence => {
                 todo!()

@@ -2,6 +2,7 @@ pub mod behavior;
 pub mod bridge;
 pub mod control;
 pub mod device;
+pub mod entertainment;
 pub mod group;
 pub mod light;
 pub mod resource;

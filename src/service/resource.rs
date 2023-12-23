@@ -8,14 +8,17 @@ use crate::{
     ZigbeeDeviceDiscoveryData, ZoneData,
 };
 
-use super::behavior::BehaviorScriptData;
+use super::{
+    behavior::{BehaviorInstanceData, BehaviorScriptData},
+    entertainment::{EntertainmentConfigurationData, EntertainmentData},
+};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Resource {
     #[serde(rename = "auth_v1")]
     AuthV1,
-    BehaviorInstance,
+    BehaviorInstance(BehaviorInstanceData),
     BehaviorScript(BehaviorScriptData),
     Bridge(BridgeData),
     BridgeHome(HomeData),
@@ -25,8 +28,8 @@ pub enum Resource {
     Device(DeviceData),
     DevicePower(DevicePowerData),
     DeviceSoftwareUpdate(DeviceSoftwareUpdateData),
-    Entertainment,
-    EntertainmentConfiguration,
+    Entertainment(EntertainmentData),
+    EntertainmentConfiguration(EntertainmentConfigurationData),
     Geofence,
     GeofenceClient(GeofenceClientData),
     Geolocation(GeolocationData),

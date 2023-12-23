@@ -1,41 +1,45 @@
 use super::{v1::RegisterResponse, HueAPIError, HueAPIResponse};
 use crate::{
     service::{
-        behavior::BehaviorScriptData,
+        behavior::{BehaviorInstanceData, BehaviorScriptData},
         bridge::BridgeData,
         control::{ButtonData, RelativeRotaryData},
         device::{DeviceData, DevicePowerData},
+        entertainment::{EntertainmentConfigurationData, EntertainmentData},
         group::GroupData,
         light::LightData,
         resource::{Resource, ResourceIdentifier},
         scene::SceneData,
         sensor::{
-            GeofenceClientData, GeolocationData, LightLevelData, MotionData, Temperature,
-            TemperatureData,
+            GeofenceClientData, GeolocationData, LightLevelData, MotionData, TemperatureData,
         },
         thirdparty::{HomeKitData, MatterData, MatterFabricData},
-        zigbee::{
-            ZGPConnectivity, ZGPConnectivityData, ZigbeeConnectivity, ZigbeeConnectivityData,
-            ZigbeeDeviceDiscoveryData,
-        },
+        zigbee::{ZGPConnectivityData, ZigbeeConnectivityData, ZigbeeDeviceDiscoveryData},
         zone::{HomeData, ZoneData},
     },
     ContactData, SmartSceneData, TamperData,
 };
-use reqwest::{Client as ReqwestClient, IntoUrl, Method, Response};
-use reqwest_eventsource::EventSource;
+use reqwest::{Certificate, Client as ReqwestClient, IntoUrl, Method};
+use rustls::{pki_types::CertificateDer, RootCertStore};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::json;
 use std::net::IpAddr;
 
-const PREFIX: &'static str = "/clip/v2";
+#[cfg(feature = "streaming")]
+use reqwest_eventsource::EventSource;
+
+const V2_PREFIX: &'static str = "/clip/v2";
+const UDP_PORT: usize = 2100;
 
 #[derive(Clone, Debug)]
 pub struct BridgeClient {
     addr: IpAddr,
     app_key: String,
+    client_key: Option<String>,
     client: ReqwestClient,
+    #[cfg(feature = "streaming")]
+    root_store: RootCertStore,
 }
 
 impl BridgeClient {
@@ -43,11 +47,49 @@ impl BridgeClient {
         BridgeClient {
             addr: addr.into(),
             app_key: app_key.into(),
+            client_key: None,
             client: ReqwestClient::builder()
+                .add_root_certificate(
+                    Certificate::from_pem(include_bytes!("../../hue.pem")).unwrap(),
+                )
                 // FIXME: why cert :(
                 .danger_accept_invalid_certs(true)
                 .build()
                 .unwrap(),
+            #[cfg(feature = "streaming")]
+            root_store: {
+                let cert = CertificateDer::from(include_bytes!("../../hue.pem").to_vec());
+                let mut root_store = rustls::RootCertStore::empty();
+                root_store.add(cert).unwrap();
+                root_store
+            },
+        }
+    }
+
+    pub(crate) fn new_with_streaming(
+        addr: impl Into<IpAddr>,
+        app_key: impl Into<String>,
+        client_key: impl Into<String>,
+    ) -> Self {
+        BridgeClient {
+            addr: addr.into(),
+            app_key: app_key.into(),
+            client_key: Some(client_key.into()),
+            client: ReqwestClient::builder()
+                .add_root_certificate(
+                    Certificate::from_pem(include_bytes!("../../hue.pem")).unwrap(),
+                )
+                // FIXME: why cert :(
+                .danger_accept_invalid_certs(true)
+                .build()
+                .unwrap(),
+            #[cfg(feature = "streaming")]
+            root_store: {
+                let cert = CertificateDer::from(include_bytes!("../../hue.der").to_vec());
+                let mut root_store = rustls::RootCertStore::empty();
+                root_store.add(cert).unwrap();
+                root_store
+            },
         }
     }
 
@@ -59,69 +101,28 @@ impl BridgeClient {
         &self.app_key
     }
 
-    pub(crate) async fn create_app(
-        &mut self,
-        app_name: impl Into<String>,
-        instance_name: impl Into<String>,
-    ) -> Result<&str, HueAPIError> {
-        match self
-            .client
-            .post(self.api_v1_url())
-            .json(&json!({
-               "devicetype": format!("{}#{}", app_name.into(), instance_name.into()),
-               "generateclientkey": true
-            }))
-            .send()
-            .await
-        {
-            Ok(res) => match res.json::<Vec<super::v1::RegisterResponse>>().await {
-                Ok(successes_or_errors) => match successes_or_errors.into_iter().nth(1).unwrap() {
-                    RegisterResponse::Success { success } => {
-                        self.app_key = success.username;
-                        return Ok(&self.app_key);
-                    }
-                    RegisterResponse::Error { error } => {
-                        Err(HueAPIError::HueBridgeError(error.description.clone()))
-                    }
-                },
-                _ => Err(HueAPIError::BadDeserialize),
-            },
-            _ => Err(HueAPIError::BadRequest),
-        }
-    }
-
-    pub(crate) async fn delete_app(&self, app_key: impl Into<String>) -> Result<(), HueAPIError> {
-        match self
-            .client
-            .delete(
-                self.api_v1_url() + "/" + &self.app_key + "/config/whitelist/" + &app_key.into(),
-            )
-            .send()
-            .await
-        {
-            Ok(res) => match res.json::<Vec<super::v1::UnregisterResponse>>().await {
-                Ok(successes_or_errors) => match successes_or_errors.into_iter().next().unwrap() {
-                    super::v1::UnregisterResponse::Success(_message) => Ok(()),
-                    super::v1::UnregisterResponse::Error(message) => {
-                        Err(HueAPIError::HueBridgeError(message))
-                    }
-                },
-                _ => Err(HueAPIError::BadDeserialize),
-            },
-            _ => Err(HueAPIError::BadRequest),
-        }
+    pub fn client_key(&self) -> Option<&str> {
+        self.client_key.as_deref()
     }
 
     fn api_url(&self) -> String {
-        format!("https://{}{}", &self.addr, PREFIX)
-    }
-
-    fn event_stream_url(&self) -> String {
-        format!("https://{}/eventstream{}", &self.addr, PREFIX)
+        format!("https://{}{}", &self.addr, V2_PREFIX)
     }
 
     fn api_v1_url(&self) -> String {
         format!("https://{}/api", &self.addr)
+    }
+
+    fn auth_url(&self) -> String {
+        format!("https://{}/auth/v1", &self.addr)
+    }
+
+    fn event_stream_url(&self) -> String {
+        format!("https://{}/eventstream{}", &self.addr, V2_PREFIX)
+    }
+
+    pub(crate) fn entertainment_url(&self) -> String {
+        format!("{}:{}", &self.addr, UDP_PORT)
     }
 
     async fn make_request<Body: Serialize, Return>(
@@ -165,6 +166,146 @@ impl BridgeClient {
         }
     }
 
+    pub(crate) async fn create_app(
+        &mut self,
+        app_name: impl Into<String>,
+        instance_name: impl Into<String>,
+    ) -> Result<&str, HueAPIError> {
+        match self
+            .client
+            .post(self.api_v1_url())
+            .json(&json!({
+               "devicetype": format!("{}#{}", app_name.into(), instance_name.into()),
+               "generateclientkey": true
+            }))
+            .send()
+            .await
+        {
+            Ok(res) => match res.json::<Vec<super::v1::RegisterResponse>>().await {
+                Ok(successes_or_errors) => match successes_or_errors.into_iter().nth(1).unwrap() {
+                    RegisterResponse::Success { success } => {
+                        self.app_key = success.username;
+                        self.client_key = Some(success.clientkey);
+                        return Ok(&self.app_key);
+                    }
+                    RegisterResponse::Error { error } => {
+                        Err(HueAPIError::HueBridgeError(error.description.clone()))
+                    }
+                },
+                _ => Err(HueAPIError::BadDeserialize),
+            },
+            _ => Err(HueAPIError::BadRequest),
+        }
+    }
+
+    pub(crate) async fn delete_app(&self, app_key: impl Into<String>) -> Result<(), HueAPIError> {
+        match self
+            .client
+            .delete(
+                self.api_v1_url() + "/" + &self.app_key + "/config/whitelist/" + &app_key.into(),
+            )
+            .send()
+            .await
+        {
+            Ok(res) => match res.json::<Vec<super::v1::UnregisterResponse>>().await {
+                Ok(successes_or_errors) => match successes_or_errors.into_iter().next().unwrap() {
+                    super::v1::UnregisterResponse::Success(_message) => Ok(()),
+                    super::v1::UnregisterResponse::Error(message) => {
+                        Err(HueAPIError::HueBridgeError(message))
+                    }
+                },
+                _ => Err(HueAPIError::BadDeserialize),
+            },
+            _ => Err(HueAPIError::BadRequest),
+        }
+    }
+
+    #[cfg(feature = "streaming")]
+    pub(crate) async fn open_stream(&self, ent_id: impl Into<String>) -> Result<(), HueAPIError> {
+        use std::sync::Arc;
+        use tokio::net::UdpSocket;
+        use webrtc_dtls::cipher_suite::CipherSuiteId;
+        use webrtc_dtls::config::{Config, ExtendedMasterSecretType};
+        use webrtc_dtls::conn::DTLSConn;
+        use webrtc_dtls::crypto::Certificate;
+        use webrtc_dtls::Error;
+        use webrtc_util::Conn;
+
+        let id: String = ent_id.into();
+
+        match self
+            .client
+            .request(Method::GET, self.auth_url())
+            .header("hue-application-key", &self.app_key)
+            .send()
+            .await
+        {
+            Ok(res) => match res.headers().get("hue-application-id") {
+                Some(app_id) => {
+                    let hue_app_id = app_id.to_str().unwrap().to_owned();
+
+                    dbg!(self.put_entertainment_configuration(id.clone(), &json!({ "action": "start" }))
+                        .await
+                        .unwrap());
+
+                    let conn = Arc::new(UdpSocket::bind("0.0.0.0:0").await.unwrap());
+                    conn.connect(self.entertainment_url()).await.unwrap();
+                    println!("connecting..");
+
+                    let client_key = self.client_key.clone().unwrap();
+                    let config = Config {
+                        insecure_skip_verify: true,
+                        psk: Some(Arc::new(move |hint: &[u8]| -> Result<Vec<u8>, Error> {
+                            println!("Client's hint: {}", String::from_utf8(hint.to_vec())?);
+                            Ok(client_key.as_bytes().to_vec())
+                        })),
+                        // certificates: vec![
+                        //     Certificate::from_pem(include_str!("../../hue.pem")).unwrap()
+                        // ],
+                        psk_identity_hint: Some(hue_app_id.into()),
+                        cipher_suites: vec![CipherSuiteId::Tls_Psk_With_Aes_128_Gcm_Sha256],
+                        extended_master_secret: ExtendedMasterSecretType::Require,
+                        ..Default::default()
+                    };
+
+                    std::thread::sleep(std::time::Duration::from_millis(2000));
+
+                    let dtls_conn: Arc<dyn Conn + Send + Sync> =
+                        Arc::new(DTLSConn::new(conn, config, true, None).await.unwrap());
+
+                    let mut bytes: Vec<u8> = vec![];
+                    bytes.extend("HueStream".as_bytes()); // protocol
+                    bytes.extend(&[0x02, 0x00]); // version 2.0
+                    bytes.push(0x07); // sequence 7
+                    bytes.extend(&[0x00, 0x00]); // reserved
+                    bytes.push(0x00); // color mode RGB
+                    bytes.push(0x00); // reserved
+                    bytes.extend(id.as_bytes()); // entertainment configuration id
+
+                    bytes.push(0x00); // channel 0
+                    bytes.extend(&[0xff, 0xff, 0x00, 0x00, 0x00, 0x00]); // red
+
+                    bytes.push(0x00); // channel 1
+                    bytes.extend(&[0x00, 0x00, 0x00, 0x00, 0xff, 0xff]); // red
+
+                    println!("{:x?}", &bytes);
+
+                    let res = dtls_conn.send(&bytes).await.unwrap();
+
+                    Ok(())
+                }
+                None => Err(HueAPIError::BadResponse),
+            },
+            Err(_) => Err(HueAPIError::BadRequest),
+        }
+    }
+
+    // pub(crate) async fn stream(&self) {
+    //     use std::net::UdpSocket;
+    //     let socket = UdpSocket::bind(self.entertainment_addr())?;
+    // }
+
+    #[cfg(feature = "streaming")]
     pub(crate) async fn get_event_stream(&self) -> Result<EventSource, HueAPIError> {
         let req = self
             .client
@@ -230,6 +371,119 @@ impl BridgeClient {
         &self,
     ) -> Result<Vec<BehaviorScriptData>, HueAPIError> {
         let url = self.api_url() + "/resource/behavior_script";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_behavior_instance(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<BehaviorInstanceData, HueAPIError> {
+        let url = self.api_url() + "/resource/behavior_instance/" + &id.into();
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_behavior_instances(
+        &self,
+    ) -> Result<Vec<BehaviorInstanceData>, HueAPIError> {
+        let url = self.api_url() + "/resource/behavior_instance";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_behavior_instance(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/behavior_instance/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn post_behavior_instance(
+        &self,
+        payload: serde_json::Value,
+    ) -> Result<ResourceIdentifier, HueAPIError> {
+        let url = self.api_url() + "/resource/behavior_instance";
+        let rids = self
+            .make_request::<serde_json::Value, Vec<ResourceIdentifier>>(
+                url,
+                Method::POST,
+                Some(payload.into()),
+            )
+            .await?;
+        match rids.into_iter().nth(0) {
+            Some(rid) => Ok(rid),
+            None => Err(HueAPIError::BadDeserialize),
+        }
+    }
+
+    pub(crate) async fn delete_behavior_instance(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/behavior_instance/" + &id.into();
+        self.make_request(url, Method::DELETE, None::<()>).await
+    }
+
+    pub(crate) async fn get_entertainment_configuration(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<EntertainmentConfigurationData, HueAPIError> {
+        let url = self.api_url() + "/resource/entertainment_configuration/" + &id.into();
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_entertainment_configurations(
+        &self,
+    ) -> Result<Vec<EntertainmentConfigurationData>, HueAPIError> {
+        let url = self.api_url() + "/resource/entertainment_configuration";
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn put_entertainment_configuration(
+        &self,
+        id: impl Into<String>,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/entertainment_configuration/" + &id.into();
+        self.make_request(url, Method::PUT, Some(payload)).await
+    }
+
+    pub(crate) async fn post_entertainment_configuration(
+        &self,
+        payload: serde_json::Value,
+    ) -> Result<ResourceIdentifier, HueAPIError> {
+        let url = self.api_url() + "/resource/entertainment_configuration";
+        let rids = self
+            .make_request::<serde_json::Value, Vec<ResourceIdentifier>>(
+                url,
+                Method::POST,
+                Some(payload.into()),
+            )
+            .await?;
+        match rids.into_iter().nth(0) {
+            Some(rid) => Ok(rid),
+            None => Err(HueAPIError::BadDeserialize),
+        }
+    }
+
+    pub(crate) async fn delete_entertainment_configuration(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        let url = self.api_url() + "/resource/entertainment_configuration/" + &id.into();
+        self.make_request(url, Method::DELETE, None::<()>).await
+    }
+
+    pub(crate) async fn get_entertainment(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<EntertainmentData, HueAPIError> {
+        let url = self.api_url() + "/resource/entertainment/" + &id.into();
+        self.make_request(url, Method::GET, None::<()>).await
+    }
+
+    pub(crate) async fn get_entertainments(&self) -> Result<Vec<EntertainmentData>, HueAPIError> {
+        let url = self.api_url() + "/resource/entertainment";
         self.make_request(url, Method::GET, None::<()>).await
     }
 

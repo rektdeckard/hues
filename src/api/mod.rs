@@ -25,6 +25,7 @@ pub enum HueAPIError {
     NotFound,
     HueBridgeError(String),
     ServerSentEvent,
+    Streaming,
 }
 
 #[derive(Default, PartialEq)]
