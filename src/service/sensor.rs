@@ -422,6 +422,10 @@ impl<'a> GeofenceClient<'a> {
         self.data.rid()
     }
 
+    pub fn builder(name: impl Into<String>) -> GeofenceClientBuilder {
+        GeofenceClientBuilder::new(name)
+    }
+
     pub async fn send(
         &self,
         commands: &[GeofenceClientCommand],

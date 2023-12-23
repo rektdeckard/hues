@@ -259,3 +259,15 @@ pub enum SoftwareUpdateStatus {
     UpdatePending,
     Installing,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct BasicMetadata {
+    pub name: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BasicStatus {
+    Active,
+    Inactive,
+}

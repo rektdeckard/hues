@@ -2,13 +2,13 @@ use std::collections::HashSet;
 
 use super::{
     bridge::Bridge,
+    device::BasicStatus,
     group::GroupDimmingState,
-    light::EffectType,
-    light::{ColorFeatureBasic, GradientMode, GradientPoint, OnState},
+    light::{ColorFeatureBasic, EffectType, GradientMode, GradientPoint, OnState},
     resource::{ResourceIdentifier, ResourceType},
 };
 use crate::{
-    api::{BridgeClient, HueAPIError},
+    api::HueAPIError,
     command::{merge_commands, SceneCommand},
     SmartSceneCommand,
 };
@@ -239,7 +239,7 @@ pub struct SceneMetadata {
     /// Human readable name of a resource.
     pub name: String,
     /// Reference with unique identifier for the image representing the scene.
-    /// Only accepts `rtype`: [ResourceType::PublicImage](crate::resource::ResourceType::PublicImage) on creation.
+    /// Only accepts `rtype`: [ResourceType::PublicImage] on creation.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image: Option<ResourceIdentifier>,
     /// Application specific data. Free format string.
@@ -366,8 +366,8 @@ pub struct SmartSceneData {
     pub transition_duration: usize,
     /// The active time slot in execution.
     pub active_timeslot: Option<ActiveTimeslot>,
-    /// The current state of the smart scene. The default state is [SmartSceneStatus::Inactive] if no recall is provided.
-    pub state: SmartSceneStatus,
+    /// The current state of the smart scene. The default state is [BasicStatus::Inactive] if no recall is provided.
+    pub state: BasicStatus,
 }
 
 impl SmartSceneData {
@@ -501,13 +501,6 @@ pub enum Weekday {
     Friday,
     Saturday,
     Sunday,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum SmartSceneStatus {
-    Active,
-    Inactive,
 }
 
 #[derive(Serialize)]

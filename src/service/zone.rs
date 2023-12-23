@@ -5,7 +5,7 @@ use super::{
 use crate::{
     api::HueAPIError,
     command::{merge_commands, ZoneCommand},
-    Device, Light,
+    Device, Light, Scene,
 };
 use serde::{Deserialize, Serialize};
 
@@ -60,6 +60,14 @@ impl<'a> Zone<'a> {
             .lights()
             .into_iter()
             .filter(|l| self.data.children.contains(&l.data().owner))
+            .collect()
+    }
+
+    pub fn scenes(&self) -> Vec<Scene> {
+        self.bridge
+            .scenes()
+            .into_iter()
+            .filter(|s| self.rid() == s.group())
             .collect()
     }
 
@@ -130,6 +138,14 @@ impl<'a> Room<'a> {
             .lights()
             .into_iter()
             .filter(|l| self.data.children.contains(&l.data().owner))
+            .collect()
+    }
+
+    pub fn scenes(&self) -> Vec<Scene> {
+        self.bridge
+            .scenes()
+            .into_iter()
+            .filter(|s| self.rid() == s.group())
             .collect()
     }
 

@@ -75,8 +75,7 @@ pub struct LightData {
     pub id_v1: Option<String>,
     /// Owner of the service, in case the owner service is deleted, the service also gets deleted.
     pub owner: ResourceIdentifier,
-    /// Deprecated: use metadata on device level.
-    #[deprecated]
+    #[deprecated = "use metadata on device level"]
     pub metadata: LightMetadata,
     pub on: OnState,
     pub dimming: DimmingState,
@@ -193,10 +192,28 @@ pub enum ParseColorError {
 }
 
 impl CIEColor {
+    /// https://developers.meethue.com/develop/application-design-guidance/color-conversion-formulas-rgb-to-xy-and-back/
     pub fn from_rgb(rgb: [u8; 3]) -> CIEColor {
-        let r = rgb[0] as f32;
-        let g = rgb[1] as f32;
-        let b = rgb[2] as f32;
+        let r = rgb[0] as f32 / 255.0;
+        let g = rgb[1] as f32 / 255.0;
+        let b = rgb[2] as f32 / 255.0;
+        // Gamma corrections
+        let r = if r > 0.04045 {
+            ((r + 0.055) / 1.055).powf(2.4)
+        } else {
+            r / 12.92
+        };
+        let g = if g > 0.04045 {
+            ((g + 0.055) / 1.055).powf(2.4)
+        } else {
+            g / 12.92
+        };
+        let b = if b > 0.04045 {
+            ((b + 0.055) / 1.055).powf(2.4)
+        } else {
+            b / 12.92
+        };
+
         let x = 0.4124 * r + 0.3576 * g + 0.1805 * b;
         let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
         let z = 0.0193 * r + 0.1192 * g + 0.9505 * b;
@@ -206,6 +223,20 @@ impl CIEColor {
             y: y / (x + y + z),
         }
     }
+
+    // pub fn from_rgb(rgb: [u8; 3]) -> CIEColor {
+    //     let r = rgb[0] as f32;
+    //     let g = rgb[1] as f32;
+    //     let b = rgb[2] as f32;
+    //     let x = 0.4124 * r + 0.3576 * g + 0.1805 * b;
+    //     let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    //     let z = 0.0193 * r + 0.1192 * g + 0.9505 * b;
+
+    //     CIEColor {
+    //         x: x / (x + y + z),
+    //         y: y / (x + y + z),
+    //     }
+    // }
 
     pub fn from_hex(hex: impl Into<String>) -> Result<CIEColor, ParseColorError> {
         let str: String = hex.into();

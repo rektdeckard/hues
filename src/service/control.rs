@@ -136,8 +136,8 @@ impl RelativeRotaryData {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct RelativeRotaryState {
-    #[deprecated]
-    /// Renamed to RelativeRotaryReport. Indicates which type of rotary event is received.
+    #[deprecated = "moved to `rotary_report`"]
+    /// Indicates which type of rotary event is received.
     pub last_event: Option<RelativeRotaryLastEvent>,
     pub rotary_report: Option<RotationReport>,
 }

@@ -206,7 +206,7 @@ pub enum ZigbeeStatus {
 pub struct ZigbeeChannelState {
     pub status: SetStatus,
     /// Current value of the zigbee channel.
-    /// If recently changed (`status`: [ZigbeeChannelStatus::Changing]), the value will reflect the channel that is currently being changed to.
+    /// If recently changed (`status`: [SetStatus::Changing]), the value will reflect the channel that is currently being changed to.
     pub value: Option<ZigbeeChannel>,
 }
 
