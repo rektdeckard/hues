@@ -1,14 +1,20 @@
 use dotenv::dotenv;
 use hues::{Bridge, Schedule, SmartScene, TimeslotStart, Weekday};
-use std::time::Duration;
+use std::{net::IpAddr, time::Duration};
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
 
-    let bridge = Bridge::new([10u8, 0, 0, 143], std::env::var("APP_KEY").unwrap())
-        .poll(Duration::from_secs(30))
-        .await;
+    let bridge = Bridge::new(
+        std::env::var("BRIDGE_IP")
+            .unwrap()
+            .parse::<IpAddr>()
+            .unwrap(),
+        std::env::var("APP_KEY").unwrap(),
+    )
+    .poll(Duration::from_secs(30))
+    .await;
 
     let scenes = bridge.scenes();
     let group_scenes = scenes

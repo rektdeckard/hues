@@ -1,16 +1,22 @@
 use dotenv::dotenv;
 use hues::{Bridge, LightCommand};
-use std::time::Duration;
+use std::{net::IpAddr, time::Duration};
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
 
-    let bridge = Bridge::new([10u8, 0, 0, 143], std::env::var("APP_KEY").unwrap())
-        .listen(|changes| {
-            dbg!(changes);
-        })
-        .await;
+    let bridge = Bridge::new(
+        std::env::var("BRIDGE_IP")
+            .unwrap()
+            .parse::<IpAddr>()
+            .unwrap(),
+        std::env::var("APP_KEY").unwrap(),
+    )
+    .listen(|changes| {
+        dbg!(changes);
+    })
+    .await;
 
     for light in bridge.lights() {
         if light.supports_color() {

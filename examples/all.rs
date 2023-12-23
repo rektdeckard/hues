@@ -1,16 +1,16 @@
 use dotenv::dotenv;
 use hues::{
     api::{HueAPIError, HueAPIResponse, Version},
-    BasicCommand, Bridge, CIEColor, ColorFeatureBasic, EffectType, GeofenceClientBuilder,
-    GeofenceClientCommand, GeolocationCommand, GroupCommand, GroupDimmingState, HomeKitCommand,
-    LightAction, LightCommand, MatterCommand, MotionCommand, OnState, ProductArchetype, Resource,
-    ResourceIdentifier, ResourceType, SceneAction, SceneBuilder, SceneColorTempState, SceneCommand,
-    SceneEffectState, ScenePalette, ScenePaletteColor, SceneStatus, Schedule, SignalColor,
-    SignalType, SmartScene, SmartSceneCommand, TimeslotStart, Weekday, Zone, ZoneArchetype,
-    ZoneBuilder, ZoneCommand,
+    BasicCommand, BehaviorInstance, Bridge, CIEColor, ColorFeatureBasic, EffectType,
+    GeofenceClientBuilder, GeofenceClientCommand, GeolocationCommand, GroupCommand,
+    GroupDimmingState, HomeKitCommand, LightAction, LightCommand, MatterCommand, MotionCommand,
+    OnState, ProductArchetype, Resource, ResourceIdentifier, ResourceType, SceneAction,
+    SceneBuilder, SceneColorTempState, SceneCommand, SceneEffectState, ScenePalette,
+    ScenePaletteColor, SceneStatus, Schedule, SignalColor, SignalType, SmartScene,
+    SmartSceneCommand, TimeslotStart, Weekday, Zone, ZoneArchetype, ZoneBuilder, ZoneCommand,
 };
 use rand::prelude::*;
-use std::{fmt::Debug, time::Duration};
+use std::{fmt::Debug, net::IpAddr, time::Duration};
 
 pub async fn time_async<F, O>(f: F) -> (O, Duration)
 where
@@ -36,20 +36,31 @@ where
 async fn main() {
     dotenv().ok();
 
-    let bridge = Bridge::new([10u8, 0, 0, 143], std::env::var("APP_KEY").unwrap())
-        .poll(Duration::from_secs(30))
-        .await;
+    let bridge = Bridge::new_streaming(
+        std::env::var("BRIDGE_IP")
+            .unwrap()
+            .parse::<IpAddr>()
+            .unwrap(),
+        std::env::var("APP_KEY").unwrap(),
+        std::env::var("CLIENT_KEY").unwrap(),
+    )
+    .poll(Duration::from_secs(30))
+    .await;
 
-    let office = bridge
-        .rooms()
+    // let office = bridge
+    //     .rooms()
+    //     .into_iter()
+    //     .find(|r| r.name() == "Office")
+    //     .unwrap();
+
+    dbg!(bridge
+        .entertainment_configurations()
         .into_iter()
-        .find(|r| r.name() == "Office")
-        .unwrap();
-
-    // dbg!(bridge.groups().get(1).unwrap().is_on());
+        .map(|e| e.data().clone())
+        .collect::<Vec<_>>());
 
     // log_time_async(smart_scene_stuff(&bridge)).await;
-    // log_time_async(alert_lights(&bridge, "#FF1100", "#11FF00")).await;
+    log_time_async(alert_lights(&bridge, "#007711", "#00ff11")).await;
     // log_time_async(create_zone(&bridge, "Fun Zone", ZoneArchetype::Computer)).await;
     // log_time_async(change_room_type(&bridge, "Office", ZoneArchetype::Office)).await;
     // log_time_async(rename_room(&bridge, "Bat Cave", "Office")).await;
