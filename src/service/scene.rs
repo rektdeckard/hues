@@ -14,7 +14,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Scene<'a> {
     bridge: &'a Bridge,
     data: SceneData,
@@ -281,7 +281,7 @@ pub struct SceneStatusState {
     pub active: SceneStatus,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum SceneStatus {
     Active,

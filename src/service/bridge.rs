@@ -82,6 +82,7 @@ impl Bridge {
         }
     }
 
+    #[cfg(feature = "streaming")]
     pub fn new_streaming(
         addr: impl Into<IpAddr>,
         app_key: impl Into<String>,
@@ -259,6 +260,14 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_behavior_scrips(&self) -> usize {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .behavior_scripts
+            .len()
+    }
+
     pub fn behavior_instance(&self, id: impl Into<String>) -> Option<BehaviorInstance> {
         self.cache
             .lock()
@@ -276,6 +285,14 @@ impl Bridge {
             .iter()
             .map(|(_, data)| BehaviorInstance::new(&self, data.clone()))
             .collect()
+    }
+
+    pub fn n_behavior_instances(&self) -> usize {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .behavior_scripts
+            .len()
     }
 
     pub async fn create_behavior_instance(
@@ -326,6 +343,14 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_entertainment_configurations(&self) -> usize {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .entertainment_configurations
+            .len()
+    }
+
     pub fn entertainment(&self, id: impl Into<String>) -> Option<Entertainment> {
         self.cache
             .lock()
@@ -343,6 +368,10 @@ impl Bridge {
             .iter()
             .map(|(_, data)| Entertainment::new(data.clone()))
             .collect()
+    }
+
+    pub fn n_entertainments(&self) -> usize {
+        self.cache.lock().expect("lock cache").entertainments.len()
     }
 
     pub async fn create_entertainment_configuration(
@@ -390,6 +419,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_button(&self) -> usize {
+        self.cache.lock().expect("lock cache").buttons.len()
+    }
+
     pub fn contact(&self, id: impl Into<String>) -> Option<Contact> {
         self.cache
             .lock()
@@ -407,6 +440,10 @@ impl Bridge {
             .iter()
             .map(|(_, data)| Contact::new(&self, data.clone()))
             .collect()
+    }
+
+    pub fn n_contacts(&self) -> usize {
+        self.cache.lock().expect("lock cache").contacts.len()
     }
 
     pub fn relative_rotary(&self, id: impl Into<String>) -> Option<RelativeRotary> {
@@ -428,6 +465,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_relative_rotaries(&self) -> usize {
+        self.cache.lock().expect("lock cache").rotaries.len()
+    }
+
     pub fn geolocation(&self, id: impl Into<String>) -> Option<Geolocation> {
         self.cache
             .lock()
@@ -447,6 +488,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_geolocations(&self) -> usize {
+        self.cache.lock().expect("lock cache").geolocations.len()
+    }
+
     pub fn geofence_client(&self, id: impl Into<String>) -> Option<GeofenceClient> {
         self.cache
             .lock()
@@ -464,6 +509,14 @@ impl Bridge {
             .iter()
             .map(|(_, data)| GeofenceClient::new(&self, data.clone()))
             .collect()
+    }
+
+    pub fn n_geofence_clients(&self) -> usize {
+        self.cache
+            .lock()
+            .expect("lock cache")
+            .geofence_clients
+            .len()
     }
 
     pub async fn create_geofence_client(
@@ -511,6 +564,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_homekits(&self) -> usize {
+        self.cache.lock().expect("lock cache").homekits.len()
+    }
+
     pub fn matter(&self, id: impl Into<String>) -> Option<Matter> {
         self.cache
             .lock()
@@ -530,6 +587,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_matters(&self) -> usize {
+        self.cache.lock().expect("lock cache").matters.len()
+    }
+
     pub fn matter_fabric(&self, id: impl Into<String>) -> Option<MatterFabric> {
         self.cache
             .lock()
@@ -547,6 +608,10 @@ impl Bridge {
             .iter()
             .map(|(_, data)| MatterFabric::new(data.clone()))
             .collect()
+    }
+
+    pub fn n_matter_fabrics(&self) -> usize {
+        self.cache.lock().expect("lock cache").matter_fabrics.len()
     }
 
     pub async fn delete_matter_fabric(
@@ -577,6 +642,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_devices(&self) -> usize {
+        self.cache.lock().expect("lock cache").devices.len()
+    }
+
     pub async fn delete_device(
         &mut self,
         id: impl Into<String>,
@@ -605,6 +674,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_device_powers(&self) -> usize {
+        self.cache.lock().expect("lock cache").power.len()
+    }
+
     pub fn group(&self, id: impl Into<String>) -> Option<Group> {
         self.cache
             .lock()
@@ -622,6 +695,10 @@ impl Bridge {
             .iter()
             .map(|(_, data)| Group::new(&self, data.clone()))
             .collect()
+    }
+
+    pub fn n_groups(&self) -> usize {
+        self.cache.lock().expect("lock cache").groups.len()
     }
 
     pub fn home(&self, id: impl Into<String>) -> Option<Home> {
@@ -643,6 +720,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_homes(&self) -> usize {
+        self.cache.lock().expect("lock cache").homes.len()
+    }
+
     pub fn light(&self, id: impl Into<String>) -> Option<Light> {
         self.cache
             .lock()
@@ -660,6 +741,10 @@ impl Bridge {
             .iter()
             .map(|(_, data)| Light::new(&self, data.clone()))
             .collect()
+    }
+
+    pub fn n_lights(&self) -> usize {
+        self.cache.lock().expect("lock cache").lights.len()
     }
 
     pub fn motion(&self, id: impl Into<String>) -> Option<Motion> {
@@ -681,6 +766,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_motions(&self) -> usize {
+        self.cache.lock().expect("lock cache").motions.len()
+    }
+
     pub fn motion_camera(&self, id: impl Into<String>) -> Option<CameraMotion> {
         self.cache
             .lock()
@@ -700,6 +789,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_motion_cameras(&self) -> usize {
+        self.cache.lock().expect("lock cache").motion_cameras.len()
+    }
+
     pub fn room(&self, id: impl Into<String>) -> Option<Room> {
         self.cache
             .lock()
@@ -717,6 +810,10 @@ impl Bridge {
             .iter()
             .map(|(_, data)| Room::new(&self, data.clone()))
             .collect()
+    }
+
+    pub fn n_rooms(&self) -> usize {
+        self.cache.lock().expect("lock cache").rooms.len()
     }
 
     pub async fn create_room(&self, builder: ZoneBuilder) -> Result<Room, HueAPIError> {
@@ -761,6 +858,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_scenes(&self) -> usize {
+        self.cache.lock().expect("lock cache").scenes.len()
+    }
+
     pub async fn create_scene(&self, builder: SceneBuilder) -> Result<Scene, HueAPIError> {
         let rid = self
             .api
@@ -803,6 +904,10 @@ impl Bridge {
             .iter()
             .map(|(_, data)| SmartScene::new(&self, data.clone()))
             .collect()
+    }
+
+    pub fn n_smart_scenes(&self) -> usize {
+        self.cache.lock().expect("lock cache").smart_scenes.len()
     }
 
     pub async fn create_smart_scene(
@@ -852,6 +957,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_light_levels(&self) -> usize {
+        self.cache.lock().expect("lock cache").light_levels.len()
+    }
+
     pub fn temperature(&self, id: impl Into<String>) -> Option<Temperature> {
         self.cache
             .lock()
@@ -869,6 +978,10 @@ impl Bridge {
             .iter()
             .map(|(_, data)| Temperature::new(&self, data.clone()))
             .collect()
+    }
+
+    pub fn n_temperatures(&self) -> usize {
+        self.cache.lock().expect("lock cache").temps.len()
     }
 
     pub fn zgp_connectivity(&self, id: impl Into<String>) -> Option<ZGPConnectivity> {
@@ -890,6 +1003,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_zgp_connectivities(&self) -> usize {
+        self.cache.lock().expect("lock cache").zgp_conns.len()
+    }
+
     pub fn zigbee_connectivity(&self, id: impl Into<String>) -> Option<ZigbeeConnectivity> {
         self.cache
             .lock()
@@ -907,6 +1024,10 @@ impl Bridge {
             .iter()
             .map(|(_, data)| ZigbeeConnectivity::new(&self, data.clone()))
             .collect()
+    }
+
+    pub fn n_zigbee_connectivities(&self) -> usize {
+        self.cache.lock().expect("lock cache").zigbee_conns.len()
     }
 
     pub fn zigbee_device_discovery(&self, id: impl Into<String>) -> Option<ZigbeeDeviceDiscovery> {
@@ -928,6 +1049,10 @@ impl Bridge {
             .collect()
     }
 
+    pub fn n_zigbee_device_discoveries(&self) -> usize {
+        self.cache.lock().expect("lock cache").zigbee_dds.len()
+    }
+
     pub fn zone(&self, id: impl Into<String>) -> Option<Zone> {
         self.cache
             .lock()
@@ -945,6 +1070,10 @@ impl Bridge {
             .iter()
             .map(|(_, data)| Zone::new(&self, data.clone()))
             .collect()
+    }
+
+    pub fn n_zones(&self) -> usize {
+        self.cache.lock().expect("lock cache").zones.len()
     }
 
     pub async fn create_zone(&self, builder: ZoneBuilder) -> Result<Zone, HueAPIError> {
@@ -1072,11 +1201,14 @@ impl BridgeBuilder {
         let addr = self.addr.unwrap_or([0u8, 0, 0, 0].into());
         let app_key = self.app_key.unwrap_or_default();
         let api = if self.version == Version::V2 {
+            #[cfg(feature = "streaming")]
             if self.client_key.is_some() {
-                BridgeClient::new_with_streaming(addr, app_key, self.client_key.unwrap())
+                BridgeClient::new_with_streaming(addr, &app_key, self.client_key.unwrap());
             } else {
-                BridgeClient::new(addr, app_key)
+                BridgeClient::new(addr, &app_key);
             }
+
+            BridgeClient::new(addr, app_key)
         } else {
             todo!()
         };

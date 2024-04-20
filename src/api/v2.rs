@@ -20,13 +20,14 @@ use crate::{
     ContactData, SmartSceneData, TamperData,
 };
 use reqwest::{Certificate, Client as ReqwestClient, IntoUrl, Method};
+#[cfg(feature = "streaming")]
 use rustls::{pki_types::CertificateDer, RootCertStore};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::json;
 use std::net::IpAddr;
 
-#[cfg(feature = "streaming")]
+#[cfg(feature = "sse")]
 use reqwest_eventsource::EventSource;
 
 const V2_PREFIX: &'static str = "/clip/v2";
@@ -66,6 +67,7 @@ impl BridgeClient {
         }
     }
 
+    #[cfg(feature = "streaming")]
     pub(crate) fn new_with_streaming(
         addr: impl Into<IpAddr>,
         app_key: impl Into<String>,
@@ -244,7 +246,8 @@ impl BridgeClient {
                 Some(app_id) => {
                     let hue_app_id = app_id.to_str().unwrap().to_owned();
 
-                    dbg!(self.put_entertainment_configuration(id.clone(), &json!({ "action": "start" }))
+                    dbg!(self
+                        .put_entertainment_configuration(id.clone(), &json!({ "action": "start" }))
                         .await
                         .unwrap());
 
@@ -305,7 +308,7 @@ impl BridgeClient {
     //     let socket = UdpSocket::bind(self.entertainment_addr())?;
     // }
 
-    #[cfg(feature = "streaming")]
+    #[cfg(feature = "sse")]
     pub(crate) async fn get_event_stream(&self) -> Result<EventSource, HueAPIError> {
         let req = self
             .client

@@ -27,7 +27,7 @@ name = "stream"
 required-features = ["mdns", "sse", "streaming"]
 
 [features]
-default = ["mdns", "sse", "streaming"]
+default = ["mdns", "sse"]
 all = ["mdns", "sse", "streaming"]
 mdns = ["dep:mdns", "dep:futures-util"]
 sse = ["dep:reqwest-eventsource"]

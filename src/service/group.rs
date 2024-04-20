@@ -33,8 +33,24 @@ impl<'a> Group<'a> {
         self.data.rid()
     }
 
-    pub fn is_on(&self) -> Option<bool> {
-        self.data.on.as_ref().and_then(|on| Some(on.on))
+    pub fn is_on(&self) -> bool {
+        self.data
+            .on
+            .as_ref()
+            .and_then(|on| Some(on.on))
+            .unwrap_or_default()
+    }
+
+    pub async fn on(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        self.send(&[GroupCommand::On(true)]).await
+    }
+
+    pub async fn off(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        self.send(&[GroupCommand::On(false)]).await
+    }
+
+    pub async fn toggle(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        self.send(&[GroupCommand::On(!self.is_on())]).await
     }
 
     pub async fn send(

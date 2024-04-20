@@ -53,15 +53,17 @@ async fn main() {
     //     .find(|r| r.name() == "Office")
     //     .unwrap();
 
-    dbg!(bridge
-        .entertainment_configurations()
-        .into_iter()
-        .map(|e| e.data().clone())
-        .collect::<Vec<_>>());
+    // dbg!(bridge
+    //     .entertainment_configurations()
+    //     .into_iter()
+    //     .map(|e| e.data().clone())
+    //     .collect::<Vec<_>>());
+    //
 
     // log_time_async(smart_scene_stuff(&bridge)).await;
-    log_time_async(alert_lights(&bridge, "#007711", "#00ff11")).await;
+    // log_time_async(alert_lights(&bridge, "#DC00F8", "#0002A3")).await;
     // log_time_async(create_zone(&bridge, "Fun Zone", ZoneArchetype::Computer)).await;
+    log_time_async(toggle_room(&bridge, "Office")).await;
     // log_time_async(change_room_type(&bridge, "Office", ZoneArchetype::Office)).await;
     // log_time_async(rename_room(&bridge, "Bat Cave", "Office")).await;
     // log_time_async(rename_scene(&bridge)).await;
@@ -71,6 +73,16 @@ async fn main() {
     // log_time_async(identify_all_lights(&bridge)).await;
     // log_time_async(randomize_all_lights(&bridge)).await;
     // log_time_async(set_specific_light_colors(&bridge, "#FF2200")).await;
+}
+
+async fn toggle_room(bridge: &Bridge, name: &str) -> Result<(), HueAPIError> {
+    let room = bridge
+        .rooms()
+        .into_iter()
+        .find(|s| s.name() == "Office")
+        .unwrap();
+    room.toggle().await?;
+    Ok(())
 }
 
 async fn smart_scene_stuff(bridge: &Bridge) -> Result<(), HueAPIError> {
