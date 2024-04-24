@@ -47,6 +47,7 @@ use tokio::task::JoinHandle;
 pub enum BridgeDiscoveryError {
     NotFound,
     MDNSUnavailable,
+    HTTPUnavailable,
 }
 
 #[derive(Debug)]
@@ -239,6 +240,14 @@ impl Bridge {
     #[cfg(feature = "streaming")]
     pub async fn initialize_streaming(&self, ent_id: impl Into<String>) -> Result<(), HueAPIError> {
         self.api.open_stream(ent_id).await
+    }
+
+    pub fn addr(&self) -> &IpAddr {
+        self.api.addr()
+    }
+
+    pub fn app_key(&self) -> &str {
+        self.api.app_key()
     }
 
     pub fn behavior_script(&self, id: impl Into<String>) -> Option<BehaviorScript> {
@@ -1143,7 +1152,26 @@ impl BridgeBuilder {
     }
 
     async fn discover_http() -> Result<Self, BridgeDiscoveryError> {
-        todo!()
+        #[derive(Debug, Deserialize)]
+        struct Discovery {
+            id: String,
+            internalipaddress: IpAddr,
+            port: u32,
+        }
+
+        match reqwest::get("https://discovery.meethue.com").await {
+            Ok(res) => match res.json::<Vec<Discovery>>().await {
+                Ok(devs) => match devs.get(0) {
+                    Some(dev) => Ok(BridgeBuilder {
+                        addr: Some(dev.internalipaddress.into()),
+                        ..Default::default()
+                    }),
+                    _ => Err(BridgeDiscoveryError::NotFound),
+                },
+                _ => Err(BridgeDiscoveryError::HTTPUnavailable),
+            },
+            _ => Err(BridgeDiscoveryError::HTTPUnavailable),
+        }
     }
 
     #[cfg(feature = "mdns")]
@@ -1151,27 +1179,34 @@ impl BridgeBuilder {
         use futures_util::{pin_mut, stream::StreamExt};
         const SERVICE_NAME: &'static str = "_hue._tcp.local";
 
-        let stream = mdns::discover::all(SERVICE_NAME, Duration::from_secs(15))
-            .unwrap()
-            .listen();
-        pin_mut!(stream);
+        // let stream = mdns::discover::all(SERVICE_NAME, Duration::from_secs(15))
+        //      .unwrap()
+        //      .listen();
+        //  pin_mut!(stream);
+        //
+        //  while let Some(Ok(response)) = stream.next().await {
+        //      dbg!(&response);
+        //      for rec in response.answers {
+        //          match rec.kind {
+        //              mdns::RecordKind::A(addr) => {
+        //                  return Ok(BridgeBuilder {
+        //                      addr: Some(addr.into()),
+        //                      ..Default::default()
+        //                  })
+        //              }
+        //              mdns::RecordKind::AAAA(addr) => {
+        //                  return Ok(BridgeBuilder {
+        //                      addr: Some(addr.into()),
+        //                      ..Default::default()
+        //                  })
+        //              }
+        //              _ => {}
+        //          }
+        //      }
+        //      return Err(BridgeDiscoveryError::NotFound);
+        //  }
 
-        if let Some(Ok(response)) = stream.next().await {
-            for rec in response.answers {
-                match rec.kind {
-                    mdns::RecordKind::A(addr) => {
-                        return Ok(BridgeBuilder {
-                            addr: Some(addr.into()),
-                            ..Default::default()
-                        })
-                    }
-                    _ => {}
-                }
-            }
-            Err(BridgeDiscoveryError::NotFound)
-        } else {
-            Err(BridgeDiscoveryError::MDNSUnavailable)
-        }
+        return Err(BridgeDiscoveryError::MDNSUnavailable);
     }
 
     pub async fn discover() -> Result<Self, BridgeDiscoveryError> {
@@ -1294,7 +1329,341 @@ fn upsert_to_cache(
                     }
                 }
             }
-            _ => {
+            HueEventType::Add => {
+                let resources = event
+                    .data
+                    .into_iter()
+                    .filter_map(|event_data| match event_data {
+                        HueEventData::AuthV1
+                        | HueEventData::BehaviorInstance
+                        | HueEventData::Geofence
+                        | HueEventData::PublicImage
+                        | HueEventData::Taurus7455
+                        | HueEventData::ZigbeeBridgeConnectivity
+                        | HueEventData::Unknown => None,
+                        HueEventData::BehaviorScript(d) => {
+                            Some(Resource::BehaviorScript(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::Bridge(d) => {
+                            Some(Resource::Bridge(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::BridgeHome(d) => {
+                            Some(Resource::BridgeHome(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::Button(d) => {
+                            Some(Resource::Button(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::CameraMotion(d) => {
+                            Some(Resource::CameraMotion(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::Contact(d) => {
+                            Some(Resource::Contact(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::Device(d) => {
+                            Some(Resource::Device(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::DevicePower(d) => {
+                            Some(Resource::DevicePower(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::DeviceSoftwareUpdate(d) => Some(
+                            Resource::DeviceSoftwareUpdate(serde_json::from_value(d).unwrap()),
+                        ),
+                        HueEventData::Entertainment(d) => {
+                            Some(Resource::Entertainment(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::EntertainmentConfiguration(d) => {
+                            Some(Resource::EntertainmentConfiguration(
+                                serde_json::from_value(d).unwrap(),
+                            ))
+                        }
+                        HueEventData::GeofenceClient(d) => {
+                            Some(Resource::GeofenceClient(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::Geolocation(d) => {
+                            Some(Resource::Geolocation(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::Group(d) => {
+                            Some(Resource::Group(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::HomeKit(d) => {
+                            Some(Resource::HomeKit(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::Light(d) => {
+                            Some(Resource::Light(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::LightLevel(d) => {
+                            Some(Resource::LightLevel(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::Matter(d) => {
+                            Some(Resource::Matter(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::MatterFabric(d) => {
+                            Some(Resource::MatterFabric(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::Motion(d) => {
+                            Some(Resource::Motion(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::RelativeRotary(d) => {
+                            Some(Resource::RelativeRotary(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::Room(d) => {
+                            Some(Resource::Room(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::Scene(d) => {
+                            Some(Resource::Scene(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::SmartScene(d) => {
+                            Some(Resource::SmartScene(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::Tamper(d) => {
+                            Some(Resource::Tamper(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::Temperature(d) => {
+                            Some(Resource::Temperature(serde_json::from_value(d).unwrap()))
+                        }
+                        HueEventData::ZGPConnectivity(d) => Some(Resource::ZGPConnectivity(
+                            serde_json::from_value(d).unwrap(),
+                        )),
+                        HueEventData::ZigbeeConnectivity(d) => Some(Resource::ZigbeeConnectivity(
+                            serde_json::from_value(d).unwrap(),
+                        )),
+                        HueEventData::ZigbeeDeviceDiscovery(d) => Some(
+                            Resource::ZigbeeDeviceDiscovery(serde_json::from_value(d).unwrap()),
+                        ),
+                        HueEventData::Zone(d) => {
+                            Some(Resource::Zone(serde_json::from_value(d).unwrap()))
+                        }
+                    })
+                    .collect::<Vec<Resource>>();
+                insert_to_cache(cache, resources);
+            }
+            HueEventType::Delete => {
+                let rids = event
+                    .data
+                    .into_iter()
+                    .filter_map(|d| match d {
+                        HueEventData::AuthV1
+                        | HueEventData::BehaviorInstance
+                        | HueEventData::Geofence
+                        | HueEventData::PublicImage
+                        | HueEventData::Taurus7455
+                        | HueEventData::ZigbeeBridgeConnectivity
+                        | HueEventData::Unknown => None,
+                        HueEventData::BehaviorScript(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::BehaviorScript,
+                            })
+                        }
+                        HueEventData::Bridge(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Bridge,
+                            })
+                        }
+                        HueEventData::BridgeHome(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::BridgeHome,
+                            })
+                        }
+                        HueEventData::Button(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Button,
+                            })
+                        }
+                        HueEventData::CameraMotion(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::CameraMotion,
+                            })
+                        }
+                        HueEventData::Contact(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Contact,
+                            })
+                        }
+                        HueEventData::Device(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Device,
+                            })
+                        }
+                        HueEventData::DevicePower(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::DevicePower,
+                            })
+                        }
+                        HueEventData::DeviceSoftwareUpdate(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::DeviceSoftwareUpdate,
+                            })
+                        }
+                        HueEventData::Entertainment(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Entertainment,
+                            })
+                        }
+                        HueEventData::EntertainmentConfiguration(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::EntertainmentConfiguration,
+                            })
+                        }
+                        HueEventData::GeofenceClient(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::GeofenceClient,
+                            })
+                        }
+                        HueEventData::Geolocation(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Geolocation,
+                            })
+                        }
+                        HueEventData::Group(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Group,
+                            })
+                        }
+                        HueEventData::HomeKit(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::HomeKit,
+                            })
+                        }
+                        HueEventData::Light(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Light,
+                            })
+                        }
+                        HueEventData::LightLevel(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::LightLevel,
+                            })
+                        }
+                        HueEventData::Matter(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Matter,
+                            })
+                        }
+                        HueEventData::MatterFabric(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::MatterFabric,
+                            })
+                        }
+                        HueEventData::Motion(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Motion,
+                            })
+                        }
+                        HueEventData::RelativeRotary(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::RelativeRotary,
+                            })
+                        }
+                        HueEventData::Room(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Room,
+                            })
+                        }
+                        HueEventData::Scene(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Scene,
+                            })
+                        }
+                        HueEventData::SmartScene(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::SmartScene,
+                            })
+                        }
+                        HueEventData::Tamper(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Tamper,
+                            })
+                        }
+                        HueEventData::Temperature(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Temperature,
+                            })
+                        }
+                        HueEventData::ZGPConnectivity(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::ZGPConnectivity,
+                            })
+                        }
+                        HueEventData::ZigbeeConnectivity(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::ZigbeeConnectivity,
+                            })
+                        }
+                        HueEventData::ZigbeeDeviceDiscovery(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::ZigbeeDeviceDiscovery,
+                            })
+                        }
+                        HueEventData::Zone(d) => {
+                            let rid = d.get("id").expect("no id").as_str().unwrap().to_owned();
+                            Some(ResourceIdentifier {
+                                rid,
+                                rtype: ResourceType::Zone,
+                            })
+                        }
+                    })
+                    .collect::<Vec<ResourceIdentifier>>();
+                delete_from_cache(cache, &rids);
+            }
+            HueEventType::Error => {
                 todo!()
             }
         }

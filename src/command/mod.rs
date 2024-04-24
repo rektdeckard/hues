@@ -234,6 +234,20 @@ pub enum GroupCommand {
     },
 }
 
+impl GroupCommand {
+    pub fn color_from_rgb(rgb: [u8; 3]) -> GroupCommand {
+        let cie = CIEColor::from_rgb(rgb);
+        GroupCommand::Color { x: cie.x, y: cie.y }
+    }
+
+    pub fn color_from_hex(hex: impl Into<String>) -> Result<GroupCommand, ParseColorError> {
+        match CIEColor::from_hex(hex) {
+            Ok(cie) => Ok(GroupCommand::Color { x: cie.x, y: cie.y }),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 impl Serialize for GroupCommand {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

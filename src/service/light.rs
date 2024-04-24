@@ -58,6 +58,10 @@ impl<'a> Light<'a> {
         self.send(&[LightCommand::On(false)]).await
     }
 
+    pub async fn toggle(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        self.send(&[LightCommand::On(!self.is_on())]).await
+    }
+
     pub async fn send(
         &self,
         commands: &[LightCommand],
@@ -143,6 +147,42 @@ pub struct ColorTempState {
     pub mirek_schema: MirekSchema,
 }
 
+impl ColorTempState {
+    /// https://tannerhelland.com/2012/09/18/convert-temperature-rgb-algorithm-code.html
+    pub fn as_rgb(&self) -> (u8, u8, u8) {
+        let k = self.mirek.map(|m| 1_000_000.0 / m as f32).unwrap_or(4500.0);
+        let t = k / 100.0;
+
+        let r = if t <= 66.0 {
+            255.0
+        } else {
+            let mut temp = t - 60.0;
+            temp = 329.698727446 * (temp.powf(-0.1332047592));
+            temp.clamp(0.0, 255.0)
+        };
+
+        let g = if t <= 66.0 {
+            let mut temp = t;
+            temp = 99.4708025861 * temp.ln() - 161.1195681661;
+            temp.clamp(0.0, 255.0)
+        } else {
+            let mut temp = t - 60.0;
+            temp = 288.1221695283 * temp.powf(-0.0755148492);
+            temp.clamp(0.0, 255.0)
+        };
+
+        let b = if t <= 19.0 {
+            0.0
+        } else {
+            let mut temp = t - 10.0;
+            temp = 138.5177312231 * temp.ln() - 305.0447927307;
+            temp.clamp(0.0, 255.0)
+        };
+
+        (r as u8, g as u8, b as u8)
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct MirekSchema {
     /// Minimum color temperature this light supports.
@@ -224,19 +264,34 @@ impl CIEColor {
         }
     }
 
-    // pub fn from_rgb(rgb: [u8; 3]) -> CIEColor {
-    //     let r = rgb[0] as f32;
-    //     let g = rgb[1] as f32;
-    //     let b = rgb[2] as f32;
-    //     let x = 0.4124 * r + 0.3576 * g + 0.1805 * b;
-    //     let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    //     let z = 0.0193 * r + 0.1192 * g + 0.9505 * b;
+    pub fn as_rgb(&self, bri: Option<f32>) -> (u8, u8, u8) {
+        let z = 1.0 - self.x - self.y;
+        let yy = bri.unwrap_or(1.0);
+        let xx = (yy / self.y) * self.x;
+        let zz = (yy / self.y) * z;
 
-    //     CIEColor {
-    //         x: x / (x + y + z),
-    //         y: y / (x + y + z),
-    //     }
-    // }
+        let mut r = xx * 1.656492 - yy * 0.354851 - zz * 0.255038;
+        let mut g = -xx * 0.707196 + yy * 1.655397 + zz * 0.036152;
+        let mut b = xx * 0.051713 - yy * 0.121364 + zz * 1.011530;
+
+        r = if r <= 0.0031308 {
+            12.92 * r
+        } else {
+            (1.0 + 0.055) * r.powf(1.0 / 2.4) - 0.055
+        };
+        g = if g <= 0.0031308 {
+            12.92 * g
+        } else {
+            (1.0 + 0.055) * g.powf(1.0 / 2.4) - 0.055
+        };
+        b = if b <= 0.0031308 {
+            12.92 * b
+        } else {
+            (1.0 + 0.055) * b.powf(1.0 / 2.4) - 0.055
+        };
+
+        ((r * 256.0) as u8, (g * 256.0) as u8, (b * 256.0) as u8)
+    }
 
     pub fn from_hex(hex: impl Into<String>) -> Result<CIEColor, ParseColorError> {
         let str: String = hex.into();

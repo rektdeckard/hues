@@ -144,26 +144,22 @@ impl BridgeClient {
             .send()
             .await
         {
-            Ok(res) => {
-                // dbg!(res.text().await);
-                // Err(HueAPIError::BadDeserialize)
-                match res.json::<HueAPIResponse<Return>>().await {
-                    Ok(res) => {
-                        if res.errors.is_empty() && res.data.is_some() {
-                            Ok(res.data.unwrap())
-                        } else {
-                            Err(HueAPIError::HueBridgeError(
-                                res.errors[0].description.clone(),
-                            ))
-                        }
-                    }
-
-                    Err(e) => {
-                        dbg!(e);
-                        Err(HueAPIError::BadDeserialize)
+            Ok(res) => match res.json::<HueAPIResponse<Return>>().await {
+                Ok(res) => {
+                    if res.errors.is_empty() && res.data.is_some() {
+                        Ok(res.data.unwrap())
+                    } else {
+                        Err(HueAPIError::HueBridgeError(
+                            res.errors[0].description.clone(),
+                        ))
                     }
                 }
-            }
+
+                Err(e) => {
+                    log::error!("{e}");
+                    Err(HueAPIError::BadDeserialize)
+                }
+            },
             _ => Err(HueAPIError::BadRequest),
         }
     }
@@ -184,16 +180,23 @@ impl BridgeClient {
             .await
         {
             Ok(res) => match res.json::<Vec<super::v1::RegisterResponse>>().await {
-                Ok(successes_or_errors) => match successes_or_errors.into_iter().nth(1).unwrap() {
-                    RegisterResponse::Success { success } => {
-                        self.app_key = success.username;
-                        self.client_key = Some(success.clientkey);
-                        return Ok(&self.app_key);
+                Ok(successes_or_errors) => {
+                    for item in successes_or_errors {
+                        match item {
+                            RegisterResponse::Success { success } => {
+                                self.app_key = success.username;
+                                self.client_key = Some(success.clientkey);
+                                return Ok(&self.app_key);
+                            }
+                            RegisterResponse::Error { error } => {
+                                return Err(HueAPIError::HueBridgeError(error.description.clone()))
+                            }
+                        }
                     }
-                    RegisterResponse::Error { error } => {
-                        Err(HueAPIError::HueBridgeError(error.description.clone()))
-                    }
-                },
+                    return Err(HueAPIError::HueBridgeError(
+                        "received no events".to_string(),
+                    ));
+                }
                 _ => Err(HueAPIError::BadDeserialize),
             },
             _ => Err(HueAPIError::BadRequest),

@@ -71,6 +71,44 @@ impl<'a> Zone<'a> {
             .collect()
     }
 
+    pub fn group(&self) -> Option<Group> {
+        self.data
+            .services
+            .iter()
+            .find(|s| s.rtype == ResourceType::Group)
+            .map(|gid| {
+                self.bridge
+                    .groups()
+                    .into_iter()
+                    .find(|g| g.rid() == *gid)
+                    .unwrap()
+            })
+    }
+
+    pub async fn on(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        if let Some(group) = self.group() {
+            group.on().await
+        } else {
+            Ok(vec![])
+        }
+    }
+
+    pub async fn off(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        if let Some(group) = self.group() {
+            group.off().await
+        } else {
+            Ok(vec![])
+        }
+    }
+
+    pub async fn toggle(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
+        if let Some(group) = self.group() {
+            group.toggle().await
+        } else {
+            Ok(vec![])
+        }
+    }
+
     pub fn builder(name: impl Into<String>, archetype: ZoneArchetype) -> ZoneBuilder {
         ZoneBuilder::new(name, archetype)
     }
