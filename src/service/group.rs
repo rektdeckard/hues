@@ -1,11 +1,7 @@
-use super::{
-    bridge::Bridge,
-    light::{AlertState, OnState, SignalType},
-    resource::{ResourceIdentifier, ResourceType},
-};
 use crate::{
     api::HueAPIError,
     command::{merge_commands, GroupCommand},
+    service::{AlertState, Bridge, OnState, ResourceIdentifier, ResourceType, SignalType},
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;

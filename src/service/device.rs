@@ -1,8 +1,7 @@
-use super::resource::{ResourceIdentifier, ResourceType};
 use crate::{
     api::HueAPIError,
     command::{merge_commands, DeviceCommand},
-    Bridge,
+    service::{Bridge, ResourceIdentifier, ResourceType},
 };
 use serde::{Deserialize, Serialize};
 

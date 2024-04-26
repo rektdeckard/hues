@@ -1,11 +1,7 @@
-use super::{
-    bridge::Bridge,
-    resource::{ResourceIdentifier, ResourceType},
-};
 use crate::{
     api::HueAPIError,
-    command::{merge_commands, HomeKitCommand},
-    MatterCommand,
+    command::{merge_commands, HomeKitCommand, MatterCommand},
+    service::{Bridge, ResourceIdentifier, ResourceType},
 };
 use serde::Deserialize;
 

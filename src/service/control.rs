@@ -1,4 +1,4 @@
-use super::resource::{ResourceIdentifier, ResourceType};
+use crate::service::{ResourceIdentifier, ResourceType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 

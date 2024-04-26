@@ -1,10 +1,23 @@
 use dotenv::dotenv;
-use hues::Bridge;
+use hues::prelude::*;
 use std::time::Duration;
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+
+    let mut bridge = Bridge::discover()
+        .await
+        .unwrap()
+        .build()
+        .poll(Duration::from_secs(30))
+        .await;
+    let key = bridge.create_app("my_app", "my_instance").await.unwrap();
+
+    for light in bridge.lights() {
+        let _ = light.identify().await;
+    }
+
     // KNOWN IP AND APP
     if true {
         // If you know your IP and App Key in advance:

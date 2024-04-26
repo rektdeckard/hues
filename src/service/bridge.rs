@@ -1,35 +1,20 @@
-use super::{
-    behavior::{
-        BehaviorInstance, BehaviorInstanceBuilder, BehaviorInstanceData, BehaviorScript,
-        BehaviorScriptData,
-    },
-    control::{Button, RelativeRotary},
-    device::{Device, DevicePower},
-    entertainment::{
-        Entertainment, EntertainmentConfiguration, EntertainmentConfigurationData,
-        EntertainmentData,
-    },
-    group::Group,
-    light::Light,
-    resource::{ResourceIdentifier, ResourceType},
-    scene::{Scene, SceneBuilder},
-    sensor::{
-        CameraMotion, GeofenceClient, GeofenceClientBuilder, Geolocation, LightLevel, Motion,
-        Temperature,
-    },
-    thirdparty::{HomeKit, Matter, MatterFabric},
-    zigbee::{ZGPConnectivity, ZigbeeConnectivity, ZigbeeDeviceDiscovery},
-    zone::{Home, Room, Zone, ZoneBuilder},
-};
 use crate::{
     api::{BridgeClient, HueAPIError, Version},
-    command::CommandBuilder,
     event::HueEvent,
-    ButtonData, Contact, ContactData, DeviceData, DevicePowerData, DeviceSoftwareUpdateData,
-    GeofenceClientData, GeolocationData, GroupData, HomeData, HomeKitData, LightData,
-    LightLevelData, MatterData, MatterFabricData, MotionData, RelativeRotaryData, Resource,
-    SceneData, SmartScene, SmartSceneBuilder, SmartSceneData, TamperData, TemperatureData,
-    ZGPConnectivityData, ZigbeeConnectivityData, ZigbeeDeviceDiscoveryData, ZoneData,
+    service::{
+        BehaviorInstance, BehaviorInstanceBuilder, BehaviorInstanceData, BehaviorScript,
+        BehaviorScriptData, Button, ButtonData, CameraMotion, Contact, ContactData, Device,
+        DeviceData, DevicePower, DevicePowerData, DeviceSoftwareUpdateData, Entertainment,
+        EntertainmentConfiguration, EntertainmentConfigurationData, EntertainmentData,
+        GeofenceClient, GeofenceClientBuilder, GeofenceClientData, Geolocation, GeolocationData,
+        Group, GroupData, Home, HomeData, HomeKit, HomeKitData, Light, LightData, LightLevel,
+        LightLevelData, Matter, MatterData, MatterFabric, MatterFabricData, Motion, MotionData,
+        RelativeRotary, RelativeRotaryData, Resource, ResourceIdentifier, ResourceType, Room,
+        Scene, SceneBuilder, SceneData, SmartScene, SmartSceneBuilder, SmartSceneData, TamperData,
+        Temperature, TemperatureData, ZGPConnectivity, ZGPConnectivityData, ZigbeeConnectivity,
+        ZigbeeConnectivityData, ZigbeeDeviceDiscovery, ZigbeeDeviceDiscoveryData, Zone,
+        ZoneBuilder, ZoneData,
+    },
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
@@ -202,10 +187,6 @@ impl Bridge {
         if let Some(handle) = &self.listen_handle.take() {
             handle.abort();
         }
-    }
-
-    pub fn command(&self) -> CommandBuilder {
-        CommandBuilder::new(&self)
     }
 
     pub async fn create_app(
@@ -885,7 +866,7 @@ impl Bridge {
         Ok(Scene::new(&self, data))
     }
 
-    // // pub async fn update_scene(&mut self, )
+    // pub async fn update_scene(&mut self, )
 
     pub async fn delete_scene(
         &self,
@@ -935,8 +916,6 @@ impl Bridge {
             .insert(data.id.clone(), data.clone());
         Ok(SmartScene::new(&self, data))
     }
-
-    // // pub async fn update_scene(&mut self, )
 
     pub async fn delete_smart_scene(
         &self,
@@ -1154,8 +1133,10 @@ impl BridgeBuilder {
     async fn discover_http() -> Result<Self, BridgeDiscoveryError> {
         #[derive(Debug, Deserialize)]
         struct Discovery {
+            #[allow(dead_code)]
             id: String,
             internalipaddress: IpAddr,
+            #[allow(dead_code)]
             port: u32,
         }
 
@@ -1179,32 +1160,32 @@ impl BridgeBuilder {
         use futures_util::{pin_mut, stream::StreamExt};
         const SERVICE_NAME: &'static str = "_hue._tcp.local";
 
-        // let stream = mdns::discover::all(SERVICE_NAME, Duration::from_secs(15))
-        //      .unwrap()
-        //      .listen();
-        //  pin_mut!(stream);
-        //
-        //  while let Some(Ok(response)) = stream.next().await {
-        //      dbg!(&response);
-        //      for rec in response.answers {
-        //          match rec.kind {
-        //              mdns::RecordKind::A(addr) => {
-        //                  return Ok(BridgeBuilder {
-        //                      addr: Some(addr.into()),
-        //                      ..Default::default()
-        //                  })
-        //              }
-        //              mdns::RecordKind::AAAA(addr) => {
-        //                  return Ok(BridgeBuilder {
-        //                      addr: Some(addr.into()),
-        //                      ..Default::default()
-        //                  })
-        //              }
-        //              _ => {}
-        //          }
-        //      }
-        //      return Err(BridgeDiscoveryError::NotFound);
-        //  }
+        let stream = mdns::discover::all(SERVICE_NAME, Duration::from_secs(15))
+            .unwrap()
+            .listen();
+        pin_mut!(stream);
+
+        while let Some(Ok(response)) = stream.next().await {
+            log::debug!("{:?}", &response);
+            for rec in response.answers {
+                match rec.kind {
+                    mdns::RecordKind::A(addr) => {
+                        return Ok(BridgeBuilder {
+                            addr: Some(addr.into()),
+                            ..Default::default()
+                        })
+                    }
+                    mdns::RecordKind::AAAA(addr) => {
+                        return Ok(BridgeBuilder {
+                            addr: Some(addr.into()),
+                            ..Default::default()
+                        })
+                    }
+                    _ => {}
+                }
+            }
+            return Err(BridgeDiscoveryError::NotFound);
+        }
 
         return Err(BridgeDiscoveryError::MDNSUnavailable);
     }
@@ -1324,7 +1305,7 @@ fn upsert_to_cache(
                             }
                         }
                         _ => {
-                            dbg!("NEED TO DO THIS: {}", event_data);
+                            log::warn!("NOT IMPLEMENTED: {:?}", event_data);
                         }
                     }
                 }
@@ -1664,7 +1645,7 @@ fn upsert_to_cache(
                 delete_from_cache(cache, &rids);
             }
             HueEventType::Error => {
-                todo!()
+                log::warn!("NOT IMPLEMENTED: {:?}", event);
             }
         }
     }
@@ -1813,10 +1794,10 @@ fn insert_to_cache(cache: &mut MutexGuard<'_, BridgeCache>, data: Vec<Resource>)
                 cache.zones.insert(d.id.clone(), d);
             }
             Resource::Unknown => {
-                dbg!("unknown {:?}", &res);
+                log::debug!("UNKNOWN RESOURCE: {:?}", &res);
             }
             _ => {
-                dbg!("unimplmented {:?}", &res);
+                log::warn!("NOT IMPLEMENTED: {:?}", &res);
             }
         }
     }

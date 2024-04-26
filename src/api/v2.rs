@@ -1,36 +1,26 @@
-use super::{v1::RegisterResponse, HueAPIError, HueAPIResponse};
 use crate::{
+    api::{v1::RegisterResponse, HueAPIError, HueAPIResponse},
     service::{
-        behavior::{BehaviorInstanceData, BehaviorScriptData},
-        bridge::BridgeData,
-        control::{ButtonData, RelativeRotaryData},
-        device::{DeviceData, DevicePowerData},
-        entertainment::{EntertainmentConfigurationData, EntertainmentData},
-        group::GroupData,
-        light::LightData,
-        resource::{Resource, ResourceIdentifier},
-        scene::SceneData,
-        sensor::{
-            GeofenceClientData, GeolocationData, LightLevelData, MotionData, TemperatureData,
-        },
-        thirdparty::{HomeKitData, MatterData, MatterFabricData},
-        zigbee::{ZGPConnectivityData, ZigbeeConnectivityData, ZigbeeDeviceDiscoveryData},
-        zone::{HomeData, ZoneData},
+        BehaviorInstanceData, BehaviorScriptData, BridgeData, ButtonData, ContactData, DeviceData,
+        DevicePowerData, EntertainmentConfigurationData, EntertainmentData, GeofenceClientData,
+        GeolocationData, GroupData, HomeData, HomeKitData, LightData, LightLevelData, MatterData,
+        MatterFabricData, MotionData, RelativeRotaryData, Resource, ResourceIdentifier, SceneData,
+        SmartSceneData, TamperData, TemperatureData, ZGPConnectivityData, ZigbeeConnectivityData,
+        ZigbeeDeviceDiscoveryData, ZoneData,
     },
-    ContactData, SmartSceneData, TamperData,
 };
+
 use reqwest::{Certificate, Client as ReqwestClient, IntoUrl, Method};
-#[cfg(feature = "streaming")]
-use rustls::{pki_types::CertificateDer, RootCertStore};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
-use serde_json::json;
 use std::net::IpAddr;
 
 #[cfg(feature = "sse")]
 use reqwest_eventsource::EventSource;
 
+#[cfg(feature = "streaming")]
+use rustls::{pki_types::CertificateDer, RootCertStore};
+
 const V2_PREFIX: &'static str = "/clip/v2";
+#[allow(dead_code)]
 const UDP_PORT: usize = 2100;
 
 #[derive(Clone, Debug)]
@@ -43,6 +33,7 @@ pub struct BridgeClient {
     root_store: RootCertStore,
 }
 
+#[allow(dead_code)]
 impl BridgeClient {
     pub(crate) fn new(addr: impl Into<IpAddr>, app_key: impl Into<String>) -> Self {
         BridgeClient {
@@ -103,6 +94,7 @@ impl BridgeClient {
         &self.app_key
     }
 
+    #[allow(dead_code)]
     pub fn client_key(&self) -> Option<&str> {
         self.client_key.as_deref()
     }
@@ -115,6 +107,7 @@ impl BridgeClient {
         format!("https://{}/api", &self.addr)
     }
 
+    #[allow(dead_code)]
     fn auth_url(&self) -> String {
         format!("https://{}/auth/v1", &self.addr)
     }
@@ -123,18 +116,19 @@ impl BridgeClient {
         format!("https://{}/eventstream{}", &self.addr, V2_PREFIX)
     }
 
+    #[allow(dead_code)]
     pub(crate) fn entertainment_url(&self) -> String {
         format!("{}:{}", &self.addr, UDP_PORT)
     }
 
-    async fn make_request<Body: Serialize, Return>(
+    async fn make_request<Body: serde::Serialize, Return>(
         &self,
         url: impl IntoUrl,
         method: Method,
         body: Option<Body>,
     ) -> Result<Return, HueAPIError>
     where
-        Return: DeserializeOwned,
+        Return: serde::de::DeserializeOwned,
     {
         match self
             .client
@@ -172,7 +166,7 @@ impl BridgeClient {
         match self
             .client
             .post(self.api_v1_url())
-            .json(&json!({
+            .json(&serde_json::json!({
                "devicetype": format!("{}#{}", app_name.into(), instance_name.into()),
                "generateclientkey": true
             }))
@@ -250,7 +244,10 @@ impl BridgeClient {
                     let hue_app_id = app_id.to_str().unwrap().to_owned();
 
                     dbg!(self
-                        .put_entertainment_configuration(id.clone(), &json!({ "action": "start" }))
+                        .put_entertainment_configuration(
+                            id.clone(),
+                            &serde_json::json!({ "action": "start" })
+                        )
                         .await
                         .unwrap());
 

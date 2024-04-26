@@ -1,85 +1,62 @@
 use dotenv::dotenv;
 use hues::{
-    api::{HueAPIError, HueAPIResponse, Version},
-    BasicCommand, BehaviorInstance, Bridge, CIEColor, ColorFeatureBasic, EffectType,
-    GeofenceClientBuilder, GeofenceClientCommand, GeolocationCommand, GroupCommand,
-    GroupDimmingState, HomeKitCommand, LightAction, LightCommand, MatterCommand, MotionCommand,
-    OnState, ProductArchetype, Resource, ResourceIdentifier, ResourceType, SceneAction,
-    SceneBuilder, SceneColorTempState, SceneCommand, SceneEffectState, ScenePalette,
-    ScenePaletteColor, SceneStatus, Schedule, SignalColor, SignalType, SmartScene,
-    SmartSceneCommand, TimeslotStart, Weekday, Zone, ZoneArchetype, ZoneBuilder, ZoneCommand,
+    prelude::*,
+    service::{
+        CIEColor, ColorFeatureBasic, EffectType, LightAction, SceneAction, SceneBuilder,
+        SceneColorTempState, SceneEffectState, ScenePalette, ScenePaletteColor, SceneStatus,
+        Schedule, SignalType, SmartScene, TimeslotStart, Weekday, Zone, ZoneArchetype,
+    },
 };
 use rand::prelude::*;
-use std::{fmt::Debug, net::IpAddr, time::Duration};
+use std::{net::IpAddr, time::Duration};
 
-pub async fn time_async<F, O>(f: F) -> (O, Duration)
-where
-    F: std::future::Future<Output = O>,
-{
-    let start = std::time::Instant::now();
-    let out = f.await;
-    let duration = start.elapsed();
-    (out, duration)
-}
-
-pub async fn log_time_async<F, O>(f: F) -> O
-where
-    F: std::future::Future<Output = O>,
-    O: Debug,
-{
-    let (out, duration) = time_async(f).await;
-    dbg!(&out, duration);
-    out
-}
+/// NOTE: in order to run examples against a real bridge, you must set the
+/// following environment variables to appropriate values:
+///
+/// HUE_BRIDGE_IP="10.0.0.123"
+/// HUE_APP_KEY="abc123xyz789"
+/// HUE_CLIENT_KEY="ABC123XYZ789" # only required to use "streaming" features
+///
+/// You may also set the following to real values on your bridge:
+const ROOM_NAME: &'static str = "Office";
+const ROOM_RENAME: &'static str = "Bat Cave";
+const ZONE_NAME: &'static str = "Fun Zone";
+const SCENE_NAME: &'static str = "Energize";
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
 
-    let bridge = Bridge::new_streaming(
-        std::env::var("BRIDGE_IP")
+    let bridge = Bridge::new(
+        std::env::var("HUE_BRIDGE_IP")
             .unwrap()
             .parse::<IpAddr>()
             .unwrap(),
-        std::env::var("APP_KEY").unwrap(),
-        std::env::var("CLIENT_KEY").unwrap(),
+        std::env::var("HUE_APP_KEY").unwrap(),
     )
     .poll(Duration::from_secs(30))
     .await;
 
-    // let office = bridge
-    //     .rooms()
-    //     .into_iter()
-    //     .find(|r| r.name() == "Office")
-    //     .unwrap();
-
-    // dbg!(bridge
-    //     .entertainment_configurations()
-    //     .into_iter()
-    //     .map(|e| e.data().clone())
-    //     .collect::<Vec<_>>());
-    //
-
-    // log_time_async(smart_scene_stuff(&bridge)).await;
-    // log_time_async(alert_lights(&bridge, "#DC00F8", "#0002A3")).await;
-    // log_time_async(create_zone(&bridge, "Fun Zone", ZoneArchetype::Computer)).await;
-    log_time_async(toggle_room(&bridge, "Office")).await;
-    // log_time_async(change_room_type(&bridge, "Office", ZoneArchetype::Office)).await;
-    // log_time_async(rename_room(&bridge, "Bat Cave", "Office")).await;
-    // log_time_async(rename_scene(&bridge)).await;
-    // log_time_async(create_scene(&bridge, "TEST SCENE")).await;
-    // log_time_async(recall_scene(&bridge, "Night Work")).await;
-    // log_time_async(delete_scenes(&bridge, "TEST SCENE")).await;
-    // log_time_async(identify_all_lights(&bridge)).await;
-    // log_time_async(randomize_all_lights(&bridge)).await;
-    // log_time_async(set_specific_light_colors(&bridge, "#FF2200")).await;
+    // let _ = toggle_room(&bridge, ROOM_NAME).await;
+    // let _ = smart_scene_stuff(&bridge).await;
+    // let _ = alert_lights(&bridge, "#DC00F8", "#0002A3").await;
+    // let _ = create_zone(&bridge, ZONE_NAME, ZoneArchetype::Computer).await;
+    // let _ = change_room_type(&bridge, ROOM_NAME, ZoneArchetype::Office).await;
+    // let _ = rename_room(&bridge, ROOM_NAME, ROOM_RENAME).await;
+    // let _ = rename_scene(&bridge).await;
+    // let _ = create_scene(&bridge, "TEST SCENE").await;
+    // let _ = recall_scene(&bridge, SCENE_NAME).await;
+    // let _ = delete_scenes(&bridge, "TEST SCENE").await;
+    // let _ = identify_all_lights(&bridge).await;
+    // let _ = randomize_all_lights(&bridge).await;
+    let _ = set_specific_light_colors(&bridge, "#FF2200").await;
 }
 
 async fn toggle_room(bridge: &Bridge, name: &str) -> Result<(), HueAPIError> {
     let room = bridge
         .rooms()
         .into_iter()
-        .find(|s| s.name() == "Office")
+        .find(|s| s.name() == name)
         .unwrap();
     room.toggle().await?;
     Ok(())
@@ -98,12 +75,7 @@ async fn smart_scene_stuff(bridge: &Bridge) -> Result<(), HueAPIError> {
         .unwrap();
     let diabs = scenes.iter().find(|sc| sc.name() == "Diabs").unwrap();
 
-    // let cmd = SmartSceneCommand::create_schedule()
-    //     .on(&[Weekday::Saturday, Weekday::Sunday])
-    //     .at(TimeslotStart::time(&[0, 20, 0]), tokyo.rid())
-    //     .build();
-
-    let ss = bridge
+    let _ss = bridge
         .create_smart_scene(
             SmartScene::builder("I AM SMORT", galaxy.data().group.clone()).schedule(
                 Schedule::new()
@@ -114,8 +86,6 @@ async fn smart_scene_stuff(bridge: &Bridge) -> Result<(), HueAPIError> {
             ),
         )
         .await;
-
-    // dbg!(ss);
 
     Ok(())
 }
@@ -233,111 +203,53 @@ async fn delete_scenes(bridge: &Bridge, name: impl Into<String>) -> Result<(), H
 }
 
 async fn create_scene(bridge: &Bridge, name: impl Into<String>) -> Result<(), HueAPIError> {
-    let green = bridge
+    let room = bridge
+        .rooms()
+        .into_iter()
+        .find(|r| r.name() == ROOM_NAME)
+        .unwrap();
+    let my_scene = bridge
         .create_scene(
-            SceneBuilder::new(
-                name.into(),
-                ResourceIdentifier {
-                    rid: "eab284ce-48ad-4f9f-9d21-4da1af36099d".into(),
-                    rtype: ResourceType::Room,
-                },
-            )
-            .actions(vec![
-                SceneAction {
-                    target: ResourceIdentifier {
-                        rid: "1ea8644a-db7b-4f4a-a4b6-87703a296cce".into(),
-                        rtype: ResourceType::Light,
-                    },
-                    action: LightAction {
-                        color: Some(ColorFeatureBasic::xy(0.3, 0.4)),
-                        ..Default::default()
-                    },
-                },
-                SceneAction {
-                    target: ResourceIdentifier {
-                        rid: "909c4644-122e-4a52-b687-370bef85eb72".into(),
-                        rtype: ResourceType::Light,
-                    },
-                    action: LightAction {
-                        color: Some(ColorFeatureBasic::xy(0.3, 0.4)),
-                        ..Default::default()
-                    },
-                },
-                SceneAction {
-                    target: ResourceIdentifier {
-                        rid: "fd6e67f8-da20-4fc1-81ae-459e039abfe9".into(),
-                        rtype: ResourceType::Light,
-                    },
-                    action: LightAction {
-                        color: Some(ColorFeatureBasic::xy(0.3, 0.4)),
-                        ..Default::default()
-                    },
-                },
-                SceneAction {
-                    target: ResourceIdentifier {
-                        rid: "61025bd7-6150-4b7f-b1ea-70b4c3dba5c4".into(),
-                        rtype: ResourceType::Light,
-                    },
-                    action: LightAction {
-                        color: Some(ColorFeatureBasic::xy(0.3, 0.4)),
-                        ..Default::default()
-                    },
-                },
-                SceneAction {
-                    target: ResourceIdentifier {
-                        rid: "7f1f28a2-be41-49bd-a27f-28e36980a05a".into(),
-                        rtype: ResourceType::Light,
-                    },
-                    action: LightAction {
-                        color: Some(ColorFeatureBasic::xy(0.3, 0.4)),
-                        ..Default::default()
-                    },
-                },
-                SceneAction {
-                    target: ResourceIdentifier {
-                        rid: "96904b1a-4024-48d7-9d40-f6c985bf18a4".into(),
-                        rtype: ResourceType::Light,
-                    },
-                    action: LightAction {
-                        color_temperature: Some(SceneColorTempState { mirek: Some(153) }),
-                        ..Default::default()
-                    },
-                },
-                SceneAction {
-                    target: ResourceIdentifier {
-                        rid: "d449485b-3244-452c-ac23-43586b7253cf".into(),
-                        rtype: ResourceType::Light,
-                    },
-                    action: LightAction {
-                        color_temperature: Some(SceneColorTempState { mirek: Some(153) }),
-                        ..Default::default()
-                    },
-                },
-                SceneAction {
-                    target: ResourceIdentifier {
-                        rid: "8b5a45e8-bdba-4263-95e7-7042129d7542".into(),
-                        rtype: ResourceType::Light,
-                    },
-                    action: LightAction {
-                        color_temperature: Some(SceneColorTempState { mirek: Some(153) }),
-                        ..Default::default()
-                    },
-                },
-            ])
-            .palette(ScenePalette {
-                color: vec![
-                    ScenePaletteColor::xyb(0.1, 0.3, 70.0),
-                    ScenePaletteColor::xyb(0.3, 0.5, 70.0),
-                ],
-                effects: vec![SceneEffectState {
-                    effect: Some(EffectType::Candle),
-                }],
-                ..Default::default()
-            }),
+            SceneBuilder::new(name.into(), room.rid())
+                .actions(
+                    room.lights()
+                        .into_iter()
+                        .map(|light| {
+                            let action = if light.supports_color() {
+                                LightAction {
+                                    color: Some(ColorFeatureBasic::xy(0.3, 0.4)),
+                                    ..Default::default()
+                                }
+                            } else {
+                                LightAction {
+                                    color_temperature: Some(SceneColorTempState {
+                                        mirek: Some(153),
+                                    }),
+                                    ..Default::default()
+                                }
+                            };
+
+                            SceneAction {
+                                target: light.rid(),
+                                action,
+                            }
+                        })
+                        .collect::<Vec<_>>(),
+                )
+                .palette(ScenePalette {
+                    color: vec![
+                        ScenePaletteColor::xyb(0.1, 0.3, 70.0),
+                        ScenePaletteColor::xyb(0.3, 0.5, 70.0),
+                    ],
+                    effects: vec![SceneEffectState {
+                        effect: Some(EffectType::Candle),
+                    }],
+                    ..Default::default()
+                }),
         )
         .await?;
 
-    dbg!(green);
+    dbg!(my_scene);
     Ok(())
 }
 

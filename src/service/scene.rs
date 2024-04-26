@@ -1,18 +1,13 @@
-use std::collections::HashSet;
-
-use super::{
-    bridge::Bridge,
-    device::BasicStatus,
-    group::GroupDimmingState,
-    light::{ColorFeatureBasic, EffectType, GradientMode, GradientPoint, OnState},
-    resource::{ResourceIdentifier, ResourceType},
-};
 use crate::{
     api::HueAPIError,
-    command::{merge_commands, SceneCommand},
-    SmartSceneCommand,
+    command::{merge_commands, SceneCommand, SmartSceneCommand},
+    service::{
+        BasicStatus, Bridge, ColorFeatureBasic, EffectType, GradientMode, GradientPoint,
+        GroupDimmingState, OnState, ResourceIdentifier, ResourceType,
+    },
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct Scene<'a> {

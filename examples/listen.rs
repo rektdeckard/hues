@@ -1,5 +1,5 @@
 use dotenv::dotenv;
-use hues::{Bridge, LightCommand};
+use hues::prelude::*;
 use std::{net::IpAddr, time::Duration};
 
 #[tokio::main]
@@ -7,11 +7,11 @@ async fn main() {
     dotenv().ok();
 
     let bridge = Bridge::new(
-        std::env::var("BRIDGE_IP")
+        std::env::var("HUE_BRIDGE_IP")
             .unwrap()
             .parse::<IpAddr>()
             .unwrap(),
-        std::env::var("APP_KEY").unwrap(),
+        std::env::var("HUE_APP_KEY").unwrap(),
     )
     .listen(|changes| {
         dbg!(changes);

@@ -1,11 +1,7 @@
-use super::{
-    bridge::Bridge,
-    device::ProductArchetype,
-    resource::{ResourceIdentifier, ResourceType},
-};
 use crate::{
     api::HueAPIError,
     command::{merge_commands, LightCommand},
+    service::{Bridge, ProductArchetype, ResourceIdentifier, ResourceType},
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -148,7 +144,8 @@ pub struct ColorTempState {
 }
 
 impl ColorTempState {
-    /// https://tannerhelland.com/2012/09/18/convert-temperature-rgb-algorithm-code.html
+    /// Uses a [method by Tanner Helland](https://tannerhelland.com/2012/09/18/convert-temperature-rgb-algorithm-code.html)
+    /// to convert a color temperature in mirek (reciprocal megakelvin) to RGB.
     pub fn as_rgb(&self) -> (u8, u8, u8) {
         let k = self.mirek.map(|m| 1_000_000.0 / m as f32).unwrap_or(4500.0);
         let t = k / 100.0;
@@ -232,7 +229,8 @@ pub enum ParseColorError {
 }
 
 impl CIEColor {
-    /// https://developers.meethue.com/develop/application-design-guidance/color-conversion-formulas-rgb-to-xy-and-back/
+    /// The method provided in the [official Hue documentataion](https://developers.meethue.com/develop/application-design-guidance/color-conversion-formulas-rgb-to-xy-and-back/)
+    /// for converting CIE colors to RBG.
     pub fn from_rgb(rgb: [u8; 3]) -> CIEColor {
         let r = rgb[0] as f32 / 255.0;
         let g = rgb[1] as f32 / 255.0;

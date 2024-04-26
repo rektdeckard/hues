@@ -1,13 +1,9 @@
-use super::{
-    bridge::Bridge,
-    device::SetStatus,
-    resource::{ResourceIdentifier, ResourceType},
-};
 use crate::{
     api::HueAPIError,
     command::{
         merge_commands, BasicCommand, GeofenceClientCommand, GeolocationCommand, MotionCommand,
     },
+    service::{Bridge, ResourceIdentifier, ResourceType, SetStatus},
 };
 use serde::{Deserialize, Serialize};
 

@@ -16,11 +16,11 @@ required-features = ["mdns", "sse", "streaming"]
 
 [[example]]
 name = "all"
-required-features = ["mdns", "sse", "streaming"]
+required-features = ["mdns", "sse"]
 
 [[example]]
 name = "listen"
-required-features = ["mdns", "sse", "streaming"]
+required-features = ["mdns", "sse"]
 
 [[example]]
 name = "stream"

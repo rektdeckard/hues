@@ -1,17 +1,12 @@
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    BridgeData, ButtonData, ContactData, DeviceData, DevicePowerData, DeviceSoftwareUpdateData,
+use crate::service::{
+    BehaviorInstanceData, BehaviorScriptData, BridgeData, ButtonData, ContactData, DeviceData,
+    DevicePowerData, DeviceSoftwareUpdateData, EntertainmentConfigurationData, EntertainmentData,
     GeofenceClientData, GeolocationData, GroupData, HomeData, HomeKitData, LightData,
     LightLevelData, MatterData, MatterFabricData, MotionData, RelativeRotaryData, SceneData,
     SmartSceneData, TamperData, TemperatureData, ZGPConnectivityData, ZigbeeConnectivityData,
     ZigbeeDeviceDiscoveryData, ZoneData,
 };
-
-use super::{
-    behavior::{BehaviorInstanceData, BehaviorScriptData},
-    entertainment::{EntertainmentConfigurationData, EntertainmentData},
-};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]

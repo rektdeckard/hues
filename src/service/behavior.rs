@@ -1,11 +1,7 @@
-use super::{
-    bridge::Bridge,
-    device::BasicMetadata,
-    resource::{ResourceIdentifier, ResourceType},
-};
 use crate::{
     api::HueAPIError,
     command::{merge_commands, BehaviorInstanceCommand},
+    service::{BasicMetadata, Bridge, ResourceIdentifier, ResourceType},
 };
 use serde::{Deserialize, Serialize};
 

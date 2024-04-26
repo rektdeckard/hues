@@ -1,5 +1,8 @@
 use dotenv::dotenv;
-use hues::{Bridge, EntertainmentConfigurationCommand, ResourceType};
+use hues::{
+    command::EntertainmentConfigurationCommand,
+    service::{Bridge, ResouceType},
+};
 use std::{net::IpAddr, time::Duration};
 
 #[tokio::main]
@@ -7,13 +10,12 @@ async fn main() {
     dotenv().ok();
 
     let bridge = Bridge::new_streaming(
-        // [10u8, 0, 0, 143],
-        std::env::var("BRIDGE_IP")
+        std::env::var("HUE_BRIDGE_IP")
             .unwrap()
             .parse::<IpAddr>()
             .unwrap(),
-        std::env::var("APP_KEY").unwrap(),
-        std::env::var("CLIENT_KEY").unwrap(),
+        std::env::var("HUE_APP_KEY").unwrap(),
+        std::env::var("HUE_CLIENT_KEY").unwrap(),
     );
     let bridge = bridge
         .listen(|changes| {

@@ -1,18 +1,8 @@
-use crate::{
-    api::HueAPIError,
-    service::{
-        bridge::Bridge,
-        device::ProductArchetype,
-        group::GroupDimmingState,
-        light::{
-            AlertEffectType, CIEColor, ColorFeatureBasic, EffectType, GradientMode, OnState,
-            ParseColorError, PowerupOnState, PowerupPresetType, SignalType, TimedEffectType,
-        },
-        resource::ResourceIdentifier,
-        scene::{SceneAction, ScenePalette, SceneStatus, Schedule},
-        zigbee::ZigbeeChannel,
-        zone::ZoneArchetype,
-    },
+use crate::service::{
+    AlertEffectType, CIEColor, ColorFeatureBasic, EffectType, GradientMode, GroupDimmingState,
+    OnState, ParseColorError, PowerupOnState, PowerupPresetType, ProductArchetype,
+    ResourceIdentifier, SceneAction, ScenePalette, SceneStatus, Schedule, SignalType,
+    TimedEffectType, ZigbeeChannel, ZoneArchetype,
 };
 use json_patch::merge;
 use serde::{ser::SerializeMap, Serialize};
@@ -24,50 +14,6 @@ pub fn merge_commands<S: Serialize>(commands: &[S]) -> serde_json::Value {
         merge(&mut map, &serde_json::to_value(cmd).unwrap());
     }
     map
-}
-
-pub struct CommandBuilder<'b> {
-    bridge: &'b Bridge,
-    commands: Vec<CommandType>,
-}
-
-impl<'b> CommandBuilder<'b> {
-    pub fn new(bridge: &'b Bridge) -> Self {
-        CommandBuilder {
-            bridge,
-            commands: vec![],
-        }
-    }
-
-    pub fn identify(mut self, id: impl Into<String>) -> Self {
-        self.commands
-            .push(CommandType::Light(id.into(), LightCommand::Identify));
-        self
-    }
-
-    pub async fn send(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
-        let mut changes = vec![];
-
-        for cmd in &self.commands {
-            match cmd {
-                CommandType::Light(id, lc) => match lc {
-                    LightCommand::Identify => {
-                        todo!();
-                        // let res = self
-                        //     .bridge
-                        //     .api
-                        //     .put_light(id, &serde_json::to_value(lc).unwrap())
-                        //     .await?;
-                        // changes.extend(res);
-                    }
-                    _ => todo!(),
-                },
-                _ => todo!(),
-            }
-        }
-
-        Ok(changes)
-    }
 }
 
 pub enum CommandType {
@@ -320,7 +266,7 @@ impl Serialize for HomeKitCommand {
     where
         S: serde::Serializer,
     {
-        let mut map = serializer.serialize_map(None)?;
+        let mut map = serializer.serialize_map(Some(1))?;
         match self {
             Self::Reset => map.serialize_entry("action", "homekit_reset")?,
         }
@@ -839,7 +785,6 @@ impl Serialize for ZigbeeDeviceDiscoveryCommand {
     where
         S: serde::Serializer,
     {
-        todo!();
         let mut map = serializer.serialize_map(None)?;
         match self {
             Self::Action {
