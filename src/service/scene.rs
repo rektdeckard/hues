@@ -325,11 +325,11 @@ impl<'a> SmartScene<'a> {
     }
 
     pub async fn activate(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
-        self.send(&[SmartSceneCommand::On(true)]).await
+        self.send(&[SmartSceneCommand::Enabled(true)]).await
     }
 
     pub async fn deactivate(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
-        self.send(&[SmartSceneCommand::On(false)]).await
+        self.send(&[SmartSceneCommand::Enabled(false)]).await
     }
 
     pub async fn send(

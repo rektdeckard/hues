@@ -1,5 +1,8 @@
 use dotenv::dotenv;
-use hues::{Bridge, Schedule, SmartScene, TimeslotStart, Weekday};
+use hues::{
+    prelude::*,
+    service::{Schedule, SmartScene, TimeslotStart, Weekday},
+};
 use std::{net::IpAddr, time::Duration};
 
 #[tokio::main]
@@ -7,11 +10,11 @@ async fn main() {
     dotenv().ok();
 
     let bridge = Bridge::new(
-        std::env::var("BRIDGE_IP")
+        std::env::var("HUE_BRIDGE_IP")
             .unwrap()
             .parse::<IpAddr>()
             .unwrap(),
-        std::env::var("APP_KEY").unwrap(),
+        std::env::var("HUE_APP_KEY").unwrap(),
     )
     .poll(Duration::from_secs(30))
     .await;
@@ -29,17 +32,23 @@ async fn main() {
 
     let smart = bridge
         .create_smart_scene(
-            SmartScene::builder("My Smart Scene", group).schedule(
-                Schedule::new()
-                    // Smart scene is active on weekends
-                    .on(&[Weekday::Saturday, Weekday::Sunday])
-                    // At 7:00am, activate Scene A
-                    .at(TimeslotStart::time(&[7, 00, 0]), scene_a.rid())
-                    // At 1:30pm, activate Scene B
-                    .at(TimeslotStart::time(&[13, 30, 0]), scene_b.rid())
-                    // At sunset, activate Scene C
-                    .at(TimeslotStart::Sunset, scene_c.rid()),
-            ),
+            SmartScene::builder("My Smart Scene", group)
+                .schedule(
+                    Schedule::new()
+                        // Smart scene is active on weekends
+                        .on(&[Weekday::Saturday, Weekday::Sunday])
+                        // At 7:00am, activate Scene A
+                        .at(TimeslotStart::time(&[07, 00, 00]), scene_a.rid())
+                        // At 1:30pm, activate Scene B
+                        .at(TimeslotStart::time(&[13, 30, 00]), scene_b.rid())
+                        // At sunset, activate Scene C
+                        .at(TimeslotStart::Sunset, scene_c.rid()),
+                )
+                .schedule(
+                    Schedule::new()
+                        .on(&[Weekday::Monday, Weekday::Wednesday, Weekday::Friday])
+                        .at(TimeslotStart::time(&[09, 00, 00]), scene_a.rid()),
+                ),
         )
         .await
         .unwrap();

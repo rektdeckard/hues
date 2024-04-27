@@ -36,19 +36,20 @@ impl BehaviorScript {
     }
 }
 
+/// Internal representation of a [BehaviorScript].
 #[derive(Clone, Debug, Deserialize)]
 pub struct BehaviorScriptData {
     /// Unique identifier representing a specific resource instance.
     pub id: String,
     /// Clip v1 resource identifier.
     pub id_v1: Option<String>,
-    /// Short description of script..
+    /// Short description of script.
     pub description: String,
-    /// JSON schema object used for validating ScriptInstance.configuration property.
+    /// JSON schema object used for validating [BehaviorInstanceData::configuration] property.
     pub configuration_schema: BehaviorSchema,
-    /// JSON schema object used for validating ScriptInstance.configuration property.
+    /// JSON schema object used for validating [BehaviorInstanceData::trigger] property.
     pub trigger_schema: BehaviorSchema,
-    /// JSON schema object used for validating ScriptInstance.configuration property.
+    /// JSON schema object used for validating [BehaviorInstanceData::state] property.
     pub state_schema: BehaviorSchema,
     /// Version of script.
     pub version: String,
@@ -151,6 +152,7 @@ impl<'a> BehaviorInstance<'a> {
     }
 }
 
+/// Internal representation of a [BehaviorInstance].
 #[derive(Clone, Debug, Deserialize)]
 pub struct BehaviorInstanceData {
     /// Unique identifier representing a specific resource instance.

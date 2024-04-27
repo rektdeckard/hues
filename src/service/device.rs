@@ -5,16 +5,25 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+/// A Device represents a physical product which may have device-level
+/// properties, and implement multiple services -- even of the same type.
+/// For example, a dimmer switch may have several
+/// [Button](crate::service::Button)s and one [Light](crate::service::Light).
+///
+/// The Bridge device cannot be deleted. Deleting other devices will
+/// unregister them.
 pub struct Device<'a> {
     bridge: &'a Bridge,
     data: DeviceData,
 }
 
 impl<'a> Device<'a> {
+    /// Constructs a new Device. Unlikely to used in application contexts.
     pub fn new(bridge: &'a Bridge, data: DeviceData) -> Self {
         Device { bridge, data }
     }
 
+    /// Retrieves underlying data representation.
     pub fn data(&self) -> &DeviceData {
         &self.data
     }
@@ -35,6 +44,10 @@ impl<'a> Device<'a> {
         self.data.metadata.archetype
     }
 
+    /// Triggers a visual identification sequence, currently implemented as
+    /// (which can change in the future): Bridge performs Zigbee LED
+    /// identification cycles for 5 seconds Lights perform one breathe cycle
+    /// Sensors perform LED identification cycles for 15 seconds.
     pub async fn identify(&self) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
         self.send(&[DeviceCommand::Identify]).await
     }
@@ -91,6 +104,7 @@ pub struct ProductData {
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
+/// Known classes of compatible products.
 pub enum ProductArchetype {
     Bollard,
     BridgeV2,

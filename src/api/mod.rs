@@ -6,17 +6,18 @@ use serde::Deserialize;
 pub(crate) use v2::BridgeClient;
 
 #[derive(Debug, Deserialize)]
-pub struct HueAPIResponse<D> {
-    pub(crate) errors: Vec<HueAPIErrorMessage>,
-    pub(crate) data: Option<D>,
+pub(crate) struct HueAPIResponse<D> {
+    pub errors: Vec<HueAPIErrorMessage>,
+    pub data: Option<D>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct HueAPIErrorMessage {
-    /// A human-readable explanation specific to this occurrence of the problem.
+pub(crate) struct HueAPIErrorMessage {
+    /// A human-readable explanation specific to this occurrence of the problem
     pub description: String,
 }
 
+/// Possible errors related to communication with the Hue Bridge.
 #[derive(Debug, PartialEq)]
 pub enum HueAPIError {
     BadRequest,
@@ -28,6 +29,7 @@ pub enum HueAPIError {
     Streaming,
 }
 
+/// The protol used by the Hue Bridge, currently only [`Version::V2`] is supported.
 #[derive(Default, PartialEq)]
 pub enum Version {
     V1,

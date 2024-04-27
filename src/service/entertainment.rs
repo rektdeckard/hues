@@ -43,6 +43,7 @@ impl<'a> EntertainmentConfiguration<'a> {
     pub async fn open_stream(&self) {}
 }
 
+/// Internal representation of an [EntertainmentConfiguration].
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EntertainmentConfigurationData {
     /// Unique identifier representing a specific resource instance.
@@ -50,27 +51,24 @@ pub struct EntertainmentConfigurationData {
     /// Clip v1 resource identifier.
     pub id_v1: Option<String>,
     pub metadata: BasicMetadata,
-    #[deprecated = "use `metadata.name`"]
     /// Friendly name of the entertainment configuration.
+    #[deprecated = "use `metadata.name`"]
     pub name: Option<String>,
     /// Defines for which type of application this channel assignment was optimized for.
-    /// - [EntertainmentConfigurationType::Screen]: Channels are organized around content from a screen
-    /// - [EntertainmentConfigurationType::Monitor]: Channels are organized around content from one or several monitors
-    /// - [EntertainmentConfigurationType::Music]: Channels are organized for music synchronization
-    /// - [EntertainmentConfigurationType::Space3D]: Channels are organized to provide 3d spacial effects
-    /// - [EntertainmentConfigurationType::Other]: General use case
     pub configuration_type: EntertainmentConfigurationType,
-    /// Read only field reporting if the stream is active or not.
+    /// Read-only field reporting if the stream is active or not.
     pub status: BasicStatus,
-    /// Expected value is of a ResourceIdentifier of the type `auth_v1` i.e. an application id, only available if status is active.
+    /// Expected value is of a ResourceIdentifier of the type
+    /// [ResourceType::AuthV1] i.e. an application id, only available if status
+    /// is active.
     pub active_streamer: Option<ResourceIdentifier>,
     pub stream_proxy: StreamProxy,
     /// Holds the channels. Each channel groups segments of one or more lights.
     pub channels: Vec<EntertainmentChannel>,
     /// Entertainment services of the lights that are in the zone have locations.
     pub locations: EntertainmentServiceLocations,
-    #[deprecated = "resolve via entertainment services in locations object"]
     /// List of light services that belong to this entertainment configuration.
+    #[deprecated = "resolve via entertainment services in locations object"]
     pub light_services: Option<Vec<ResourceIdentifier>>,
 }
 
@@ -86,11 +84,16 @@ impl EntertainmentConfigurationData {
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EntertainmentConfigurationType {
+    /// Channels are organized around content from a screen.
     Screen,
+    /// Channels are organized around content from one or several monitors.
     Monitor,
+    /// Channels are organized for music synchronization.
     Music,
+    /// Channels are organized to provide 3d spatial effects.
     #[serde(rename = "3dspace")]
     Space3D,
+    /// General use-case.
     Other,
 }
 

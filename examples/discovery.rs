@@ -22,7 +22,7 @@ async fn main() {
     if true {
         // If you know your IP and App Key in advance:
 
-        let bridge = Bridge::new([10u8, 0, 0, 143], std::env::var("APP_KEY").unwrap())
+        let bridge = Bridge::new([10u8, 0, 0, 143], std::env::var("HUE_APP_KEY").unwrap())
             // This initiates polling. Polling updates all device states periodically.
             // Without either polling or calling `bridge.refresh().await`,
             // no devices will be populated on the bridge.
@@ -37,7 +37,7 @@ async fn main() {
         let bridge = Bridge::discover()
             .await
             .unwrap()
-            .app_key(&std::env::var("APP_KEY").unwrap())
+            .app_key(&std::env::var("HUE_APP_KEY").unwrap())
             .build();
     }
 

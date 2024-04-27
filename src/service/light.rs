@@ -193,7 +193,7 @@ pub struct ColorState {
     /// CIE XY gamut position
     pub xy: CIEColor,
     pub gamut: CIEGamut,
-    /// The gammut types supported by hue.
+    /// The gamut types supported by Hue.
     ///
     /// – A Gamut of early Philips color-only products
     /// – B Limited gamut of first Hue color products
@@ -214,7 +214,7 @@ pub struct CIEGamut {
     pub blue: CIEColor,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct CIEColor {
     /// X position in color gamut
     pub x: f32,
@@ -230,7 +230,7 @@ pub enum ParseColorError {
 
 impl CIEColor {
     /// The method provided in the [official Hue documentataion](https://developers.meethue.com/develop/application-design-guidance/color-conversion-formulas-rgb-to-xy-and-back/)
-    /// for converting CIE colors to RBG.
+    /// for converting RGB colors to CIE.
     pub fn from_rgb(rgb: [u8; 3]) -> CIEColor {
         let r = rgb[0] as f32 / 255.0;
         let g = rgb[1] as f32 / 255.0;
@@ -291,6 +291,16 @@ impl CIEColor {
         ((r * 256.0) as u8, (g * 256.0) as u8, (b * 256.0) as u8)
     }
 
+    /// Try to parse a hex color string, and on success convert the value to
+    /// the CIE color space.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let hex = "#FAA020";
+    /// let cie = CIEColor::from_hex(hex).unwrap();
+    /// assert_eq!(CIEColor { x: 0.0, y: 0.0 }, cie);
+    /// ```
     pub fn from_hex(hex: impl Into<String>) -> Result<CIEColor, ParseColorError> {
         let str: String = hex.into();
         let len = str.len();

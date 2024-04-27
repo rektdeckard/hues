@@ -11,16 +11,19 @@
 //!   - Via **mDNS** using the [mdns](https://docs.rs/mdns/3) crate, requires the `mdns` feature
 //!   - Via **HTTPS** using the Hue Discovery Endpoint
 //! - App key creation
-//! - Light, Group and Scene control
+//! - Light, Group, and Scene control
 //! - Schedule and Smart Scene management
 //!
 //! It does not yet support the following features:
 //!
-//! - [Entertainment API](https://developers.meethue.com/develop/hue-entertainment/) for fast,
-//! synchronous light effects via UDP
+//! - [Entertainment API](https://developers.meethue.com/develop/hue-entertainment/)
+//! for fast, synchronous light effects via UDP
 //! - Advanced features regarding Entertainment Configurations
 //!
 //! # Basic usage
+//!
+//! If you already know your Bridge IP address and have previously created an
+//! App Key, constructing a client is quick and simple:
 //!
 //! ```
 //! use hues::prelude::*;
@@ -29,17 +32,24 @@
 //! async fn main() -> Result<(), HueAPIError> {
 //!     // Construct a Bridge when IP and App Key are known
 //!     let bridge = Bridge::new([10u8, 0, 0, 123], "my-app-key");
+//!     // Refresh it to fetch the current state of all resources
+//!     bridge.refresh().await?;
 //!     
 //!     // Toggle the power state of a Room named "office", if it exists
-//!     if let Some(office) = bridge.rooms().iter().find(|room| room.name() == "office") {
+//!     if let Some(office) = bridge.rooms().iter().find(|r| r.name() == "office") {
 //!         office.toggle().await?;
 //!     }
-//!
 //!     Ok(())
 //! }
 //! ```
 //!
 //! # Bridge discovery and registration
+//!
+//! When the Bridge IP address is not known, you can locate the device on the
+//! local network using the [Bridge::discover](service::Bridge::discover)
+//! associated function. If you are creating an app for the first time, the
+//! [Bridge::create_app](service::Bridge::create_app) method initializes new
+//! credentials that can be used for future authentication.
 //!
 //! ```
 //! use hues::prelude::*
@@ -49,7 +59,6 @@
 //! async fn main() {
 //!     // Discover a Hue Bridge on the local network, and initialize polling
 //!     // to synchronize state every 30 seconds.
-//!     // NOTE: press the `Link Button` on the Hues Bridge before attempting
 //!     let mut bridge = Bridge::discover()
 //!         .await
 //!         .unwrap()
@@ -57,6 +66,8 @@
 //!         .poll(Duration::from_secs(30))
 //!         .await;
 //!     // This is your App Key, it should be saved for future sessions
+//!     // NOTE: press the `Link Button` on the Hues Bridge before attempting
+//!     // to create new app credentials.
 //!     let key = bridge.create_app("my_app", "my_instance").await.unwrap();
 //!
 //!     // Blink each light to confirm you're registered!
@@ -66,10 +77,11 @@
 //! }
 //! ```
 //!
-//! # Automatic sync with SSE
+//! # Automatic sync with `sse`
 //!
 //! Optionally, you can sync automatically by listening for Server-Sent Events.
-//! The bridge will communicate changes
+//! The bridge will communicate changes as they happen to the client, and you
+//! can take action if you choose to do so:
 //!
 //! ```
 //! use hues::prelude::*;

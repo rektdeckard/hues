@@ -8,6 +8,7 @@ use json_patch::merge;
 use serde::{ser::SerializeMap, Serialize};
 use serde_json::json;
 
+/// A helper function to merge types serializeable to a JSON object.
 pub fn merge_commands<S: Serialize>(commands: &[S]) -> serde_json::Value {
     let mut map = json!({});
     for cmd in commands {
@@ -45,16 +46,18 @@ pub enum CommandType {
     Zone(ZoneCommand),
 }
 
+/// Command representing the enabled state of a simple device.
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BasicCommand {
     Enabled(bool),
 }
 
+/// Commands for a [BehaviorInstance](crate::service::BehaviorInstance).
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BehaviorInstanceCommand {
-    /// Indicated whether a scripts is enabled.
+    /// Indicates whether a scripts is enabled.
     Enabled(bool),
     /// Script configuration.
     /// This property is validated using ScriptDefinition.configuration_schema JSON schema.
@@ -73,7 +76,13 @@ pub struct ButtonCommand;
 
 pub struct CameraMotionCommand;
 
+/// Commands for a [Device](crate::service::Device).
+#[derive(Debug)]
 pub enum DeviceCommand {
+    /// Triggers a visual identification sequence, currently implemented as
+    /// (which can change in the future): Bridge performs Zigbee LED
+    /// identification cycles for 5 seconds Lights perform one breathe cycle
+    /// Sensors perform LED identification cycles for 15 seconds.
     Identify,
     Metadata {
         name: Option<String>,
@@ -108,6 +117,7 @@ impl Serialize for DeviceCommand {
 
 pub struct DevicePowerCommand;
 
+/// Commands for an [EntertainmentConfiguration](crate::service::EntertainmentConfiguration).
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EntertainmentConfigurationCommand {
@@ -121,16 +131,21 @@ pub enum EntertainmentAction {
     Stop,
 }
 
+/// Commands for a [GeofenceClient](crate::service::GeofenceClient).
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GeofenceClientCommand {
+    /// Indicates if Geofence Client is at home.
     IsAtHome(bool),
+    /// Renames the Geofence Client.
     Name(String),
 }
 
+/// Commands for a [Geolocation](crate::service::Geolocation).
 #[derive(Serialize)]
 #[serde(untagged)]
 pub enum GeolocationCommand {
+    /// Places the Geolocation at the given coordinates.
     Coordinates {
         #[serde(rename = "latitude")]
         lat: f32,
@@ -139,40 +154,53 @@ pub enum GeolocationCommand {
     },
 }
 
+/// Commands for a [Group](crate::service::Group).
+#[derive(Debug)]
 pub enum GroupCommand {
+    /// Sets the alert effect for all members.
     Alert(AlertEffectType),
     /// CIE XY gamut position
     Color {
-        /// X position in color gamut (`0`-`1`)
+        /// X position in color gamut (`0.0`, `1.0`)
         x: f32,
-        /// Y position in color gamut (`0`-`1`)
+        /// Y position in color gamut (`0.0`, `1.0`)
         y: f32,
     },
-    /// Color temperature in mirek \[`153`-`500`\] or null when the light color is not in the ct spectrum.
+    /// Color temperature in absolute mirek \[`153`, `500`\] or null when the light color
+    /// is not in the ct spectrum.
     ColorTemp(u16),
-    /// Brightness percentage \[`0.0`-`100.0`\]. value cannot be `0`, writing `0` changes it to lowest possible brightness.
+    /// Color temperature change in mirek.
     ColorTempDelta {
         action: DeltaAction,
-        /// Mirek delta to current mirek \[`0`-`347`\]. Clip at mirek_minimum and mirek_maximum of mirek_schema.
+        /// Mirek delta to current mirek \[`0`, `347`\]. Clip at
+        /// [mirek_minimum](crate::service::MirekSchema::mirek_minimum) and
+        /// [mirek_maximum](crate::service::MirekSchema::mirek_maximum) of mirek_schema.
         mirek_delta: Option<u16>,
     },
+    /// Joined dimming control, sets absolute brightness of turned-on lights
+    /// in this group.
     Dim(f32),
+    /// Joined dimming control, sets relative brightness change of turned-on
+    /// lights in this group.
     DimDelta {
         action: DeltaAction,
-        /// Brightness percentage of full-scale increase delta to current dimlevel. Clip at Max-level or Min-level.
+        /// Brightness percentage of absolute delta to current
+        /// [brightness](crate::service::DimmingState::brightness).
         brightness_delta: Option<f32>,
     },
+    /// Modifies properties of trasitions and timed effects in this group.
     Dynamics {
         /// Duration of a light transition or timed effects in ms.
         duration: Option<usize>,
     },
+    /// Joined power state of this group.
     On(bool),
     /// Feature containing signaling properties.
     Signaling {
         signal: SignalType,
         /// Duration in seconds.
         ///
-        /// Has a max of 65534000 ms and a stepsize of 1 second.
+        /// Has a max of 65,534,000ms and a stepsize of 1,000ms.
         /// Values in between steps will be rounded. Duration is ignored for [SignalType::NoSignal].
         duration: usize,
         /// List of colors (1 or 2) to apply to the signal (not supported by all signals).
@@ -256,6 +284,7 @@ impl Serialize for GroupCommand {
     }
 }
 
+/// Commands for a [HomeKit](crate::service::HomeKit).
 #[derive(Debug)]
 pub enum HomeKitCommand {
     Reset,
@@ -274,41 +303,54 @@ impl Serialize for HomeKitCommand {
     }
 }
 
+/// Commands for a [Light](crate::service::Light).
+#[derive(Debug)]
 pub enum LightCommand {
+    /// Sets the alert effect for this light.
     Alert(AlertEffectType),
     /// CIE XY gamut position
     Color {
-        /// X position in color gamut (`0`-`1`)
+        /// X position in color gamut (`0`, `1`)
         x: f32,
-        /// Y position in color gamut (`0`-`1`)
+        /// Y position in color gamut (`0`, `1`)
         y: f32,
     },
-    /// Color temperature in mirek \[`153`-`500`\] or null when the light color is not in the ct spectrum.
+    /// Color temperature in absolute mirek \[`153`, `500`\] or null when the light color
+    /// is not in the ct spectrum.
     ColorTemp(u16),
+    /// Color temperature change in mirek.
     ColorTempDelta {
         action: DeltaAction,
-        /// Mirek delta to current mirek \[`0`-`347`\]. Clip at mirek_minimum and mirek_maximum of mirek_schema.
+        /// Mirek delta to current mirek \[`0`, `347`\]. Clip at
+        /// [mirek_minimum](crate::service::MirekSchema::mirek_minimum) and
+        /// [mirek_maximum](crate::service::MirekSchema::mirek_maximum) of mirek_schema.
         mirek_delta: Option<u16>,
     },
-    /// Brightness percentage \[`0.0`-`100.0`\]. value cannot be `0`, writing `0` changes it to lowest possible brightness.
+    /// Brightness percentage \(`0.0`-`100.0`\]. value cannot be `0`, writing
+    /// `0` changes it to lowest possible brightness.
     Dim(f32),
+    /// Brightness change to this light.
     DimDelta {
         action: Option<DeltaAction>,
-        /// Brightness percentage of full-scale increase delta to current dimlevel. Clip at Max-level or Min-level.
+        /// Brightness percentage of full-scale increase delta to current
+        /// dimlevel. Clip at Max-level or Min-level.
         brightness_delta: Option<f32>,
     },
+    /// Modifies properties of trasitions and timed effects of this light.
     Dynamics {
         /// Duration of a light transition or timed effects in ms.
         duration: Option<usize>,
         /// Speed of dynamic palette or effect.
         ///
-        /// The speed is valid for the dynamic palette if the status is [DynamicsStatus::DynamicPalette](crate::service::light::DynamicsStatus::DynamicPalette)
-        /// or for the corresponding effect listed in status. In case of status [None], the speed is not valid.
+        /// The speed is valid for the dynamic palette if the status is [DynamicsStatus::DynamicPalette](crate::service::DynamicsStatus::DynamicPalette)
+        /// or for the corresponding effect listed in status. In case of status
+        /// [None], the speed is not valid.
         speed: Option<f32>,
     },
     /// Basic feature containing gradient properties.
     Gradient {
-        /// Collection of gradients points. For control of the gradient points through a PUT a minimum of 2 points need to be provided.
+        /// Collection of gradients points. For control of the gradient points
+        /// through a PUT a minimum of 2 points need to be provided.
         points: Vec<CIEColor>,
         mode: Option<GradientMode>,
     },
@@ -320,9 +362,11 @@ pub enum LightCommand {
         name: Option<String>,
         archetype: Option<ProductArchetype>,
     },
+    /// Power state of this light.
     On(bool),
+    /// Configures the power-up behavior of this light.
     PowerUp {
-        /// When setting the custom preset the additional properties can be set.
+        /// When setting the custom preset, other properties can be set.
         /// For all other presets, no other properties can be included.
         preset: PowerupPresetType,
         on: Option<PowerupOnState>,
@@ -334,19 +378,24 @@ pub enum LightCommand {
         signal: SignalType,
         /// Duration in seconds.
         ///
-        /// Has a max of 65534000 ms and a stepsize of 1 second.
-        /// Values in between steps will be rounded. Duration is ignored for [SignalType::NoSignal].
+        /// Has a max of 65,534,000ms and a stepsize of 1000ms.
+        /// Values in between steps will be rounded. Duration is ignored for
+        /// [SignalType::NoSignal].
         duration: usize,
-        /// List of colors (1 or 2) to apply to the signal (not supported by all signals).
+        /// List of colors (1 or 2) to apply to the signal (not supported by
+        /// all signals).
         colors: Option<SignalColor>,
     },
     /// Basic feature containing timed effect properties.
     TimedEffect {
         effect: TimedEffectType,
-        /// Duration is mandatory when timed effect is set, except for [TimedEffectType::NoEffect].
-        /// Resolution decreases for a larger duration. e.g Effects with duration smaller than
-        /// a minute will be rounded to a resolution of 1s, while effects with duration larger than
-        /// an hour will be arounded up to a resolution of 300s. Duration has a max of 21600000 ms.
+        /// Duration is mandatory when timed effect is set, except for
+        /// [TimedEffectType::NoEffect].
+        /// Resolution decreases for a larger duration. e.g Effects with
+        /// duration smaller than a minute will be rounded to a resolution of
+        /// 1s, while effects with duration larger than an hour will be
+        /// rounded up to a resolution of 300,000ms. Duration has a max of
+        /// 21,600,000ms.
         duration: Option<usize>,
     },
 }
@@ -369,11 +418,11 @@ impl LightCommand {
 pub struct PowerupColor {
     /// State to activate after powerup.
     ///
-    /// Availability of [PowerupColorMode::ColorTemp] and [PowerupColorMode::Color] modes depend on
-    /// the capabilities of the lamp.
-    mode: PowerupColorMode,
-    color: Option<CIEColor>,
-    color_temperature: Option<u16>,
+    /// Availability of [PowerupColorMode::ColorTemp] and
+    /// [PowerupColorMode::Color] modes depend on the capabilities of the lamp.
+    pub mode: PowerupColorMode,
+    pub color: Option<CIEColor>,
+    pub color_temperature: Option<u16>,
 }
 
 impl Serialize for PowerupColor {
@@ -404,8 +453,8 @@ pub enum PowerupColorMode {
 
 #[derive(Debug)]
 pub struct PowerupDimming {
-    mode: PowerupDimmingMode,
-    brightness: Option<f32>,
+    pub mode: PowerupDimmingMode,
+    pub brightness: Option<f32>,
 }
 
 impl Serialize for PowerupDimming {
@@ -432,8 +481,11 @@ pub enum PowerupDimmingMode {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DeltaAction {
+    /// Increases the target value.
     Up,
+    /// Decreases the target value.
     Down,
+    /// Halts the target value if it is in the process of animating.
     Stop,
 }
 
@@ -576,6 +628,7 @@ pub enum DeviceIdentifyType {
     Sensors,
 }
 
+/// Commands for a [Matter](crate::service::Matter).
 #[derive(Debug)]
 pub enum MatterCommand {
     Reset,
@@ -596,8 +649,13 @@ impl Serialize for MatterCommand {
 
 pub struct MatterFabricCommand;
 
+/// Commands for a [Motion](crate::service::Motion).
+#[derive(Debug)]
 pub enum MotionCommand {
+    /// The enabled state of the Motion device.
     Enabled(bool),
+    /// Sensitivity of the sensor. Value in the range [`0`,
+    /// [sensitivity_max](crate::service::Sensitivity::sensitivity_max)].
     Sensitivity(usize),
 }
 
@@ -621,7 +679,10 @@ impl Serialize for MotionCommand {
 
 pub struct RelativeRotaryCommand;
 
+/// Commands for a [Zone](crate::service::Zone).
+#[derive(Debug)]
 pub enum ZoneCommand {
+    /// Sets the devices/services of this Zone.
     Children(Vec<ResourceIdentifier>),
     Metadata {
         name: Option<String>,
@@ -647,21 +708,27 @@ impl Serialize for ZoneCommand {
     }
 }
 
+/// Commands for a [Scene](crate::service::Scene).
+#[derive(Debug)]
 pub enum SceneCommand {
     /// List of actions to be executed synchronously on recall.
     Actions(Vec<SceneAction>),
-    /// Indicates whether to automatically start the scene dynamically on [SceneStatus::Active] recall.
+    /// Indicates whether to automatically start the scene dynamically on
+    /// [SceneStatus::Active] recall.
     AutoDynamic(bool),
     Metadata {
         name: Option<String>,
         appdata: Option<String>,
     },
-    /// Group of colors that describe the palette of colors to be used when playing dynamics.
+    /// Group of colors that describe the palette of colors to be used when
+    /// playing dynamics.
     Palette(ScenePalette),
     /// Trigger the scene, optionally overriding some of its properties.
     Recall {
-        /// When writing [SceneStatus::Active], the actions in the scene are executed on the target.
-        /// [SceneStatus::DynamicPalette] starts dynamic scene with colors in the Palette object.
+        /// When writing [SceneStatus::Active], the actions in the scene are
+        /// executed on the target.
+        /// [SceneStatus::DynamicPalette] starts dynamic scene with colors in
+        /// the Palette object.
         action: Option<SceneStatus>,
         /// Transition to the scene within the timeframe given by duration in ms.
         duration: Option<usize>,
@@ -709,13 +776,18 @@ impl Serialize for SceneCommand {
     }
 }
 
+/// Commands for a [SmartScene](crate::service::SmartScene).
+#[derive(Debug)]
 pub enum SmartSceneCommand {
-    On(bool),
+    /// Enabled state of this SmartScene.
+    Enabled(bool),
     Metadata {
         name: Option<String>,
         appdata: Option<String>,
     },
+    /// Commits a schedule of timeslots in which scenes should be applied.
     Schedule(Vec<Schedule>),
+    /// Sets the duration of the transition betwees scenes, by default 60,000ms.
     TransitionDuration(usize),
 }
 
@@ -732,7 +804,7 @@ impl Serialize for SmartSceneCommand {
     {
         let mut map = serializer.serialize_map(None)?;
         match self {
-            Self::On(b) => {
+            Self::Enabled(b) => {
                 map.serialize_entry(
                     "recall",
                     &json!({ "action": if *b { "activate" } else { "deactivate"} }),
@@ -754,6 +826,8 @@ impl Serialize for SmartSceneCommand {
 
 pub struct TamperCommand;
 
+/// Commands for a [ZigbeeConnectivity](crate::service::ZigbeeConnectivity).
+#[derive(Debug)]
 pub enum ZigbeeConnectivityCommand {
     Channel(ZigbeeChannel),
 }
@@ -773,6 +847,8 @@ impl Serialize for ZigbeeConnectivityCommand {
     }
 }
 
+/// Commands for a [ZigbeeDeviceDiscovery](crate::service::ZigbeeDeviceDiscovery).
+#[derive(Debug)]
 pub enum ZigbeeDeviceDiscoveryCommand {
     Action {
         search_codes: Vec<String>,
