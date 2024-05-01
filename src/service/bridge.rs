@@ -1088,6 +1088,7 @@ impl Bridge {
     }
 }
 
+/// Internal representation of a [Bridge].
 #[derive(Clone, Debug, Deserialize)]
 pub struct BridgeData {
     /// Unique identifier representing a specific resource instance.
@@ -1164,6 +1165,11 @@ impl BridgeBuilder {
             .unwrap()
             .listen();
         pin_mut!(stream);
+
+        // Seem to be issues with VLANs and Windows?
+        if cfg!(target_family = "windows") {
+            return Err(BridgeDiscoveryError::MDNSUnavailable);
+        }
 
         while let Some(Ok(response)) = stream.next().await {
             log::debug!("{:?}", &response);

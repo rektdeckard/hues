@@ -5,6 +5,7 @@ use crate::{
 };
 use serde::Deserialize;
 
+/// An Apple HomeKit device.
 #[derive(Debug)]
 pub struct HomeKit<'a> {
     bridge: &'a Bridge,
@@ -37,6 +38,7 @@ impl<'a> HomeKit<'a> {
     }
 }
 
+/// Internal representation of a [HomeKit].
 #[derive(Clone, Debug, Deserialize)]
 pub struct HomeKitData {
     /// Unique identifier representing a specific resource instance.
@@ -70,6 +72,8 @@ pub enum HomeKitStatus {
     Unpaired,
 }
 
+/// A virtual device representing interoperating
+/// [Matter](https://csa-iot.org/all-solutions/matter/) devices.
 #[derive(Debug)]
 pub struct Matter<'a> {
     bridge: &'a Bridge,
@@ -102,6 +106,7 @@ impl<'a> Matter<'a> {
     }
 }
 
+/// Internal representation of the [Matter] interop interface.
 #[derive(Clone, Debug, Deserialize)]
 pub struct MatterData {
     /// Unique identifier representing a specific resource instance.
@@ -123,6 +128,8 @@ impl MatterData {
     }
 }
 
+/// A virtual device representing the network of
+/// [Matter](https://csa-iot.org/all-solutions/matter/) devices.
 #[derive(Debug)]
 pub struct MatterFabric {
     data: MatterFabricData,
@@ -146,6 +153,7 @@ impl MatterFabric {
     }
 }
 
+/// Internal representation of a [MatterFabric].
 #[derive(Clone, Debug, Deserialize)]
 pub struct MatterFabricData {
     /// Unique identifier representing a specific resource instance.

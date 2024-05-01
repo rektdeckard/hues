@@ -7,6 +7,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+/// A physical contact sensor device.
 #[derive(Debug)]
 pub struct Contact<'a> {
     bridge: &'a Bridge,
@@ -39,6 +40,7 @@ impl<'a> Contact<'a> {
     }
 }
 
+/// Internal representation of a [Contact].
 #[derive(Clone, Debug, Deserialize)]
 pub struct ContactData {
     /// Unique identifier representing a specific resource instance.
@@ -75,6 +77,7 @@ pub enum ContactStatus {
     NoContact,
 }
 
+/// A motion detection senseor device.
 #[derive(Debug)]
 pub struct Motion<'a> {
     bridge: &'a Bridge,
@@ -116,6 +119,7 @@ pub struct CameraMotion<'a> {
     data: MotionData,
 }
 
+/// A camera device with motion detection capability.
 impl<'a> CameraMotion<'a> {
     pub fn new(bridge: &'a Bridge, data: MotionData) -> Self {
         CameraMotion { bridge, data }
@@ -145,6 +149,7 @@ impl<'a> CameraMotion<'a> {
     }
 }
 
+/// Internal representation of a [Motion] or [CameraMotion].
 #[derive(Clone, Debug, Deserialize)]
 pub struct MotionData {
     /// Unique identifier representing a specific resource instance.
@@ -184,6 +189,7 @@ pub struct Sensitivity {
     pub sensitivity_max: Option<usize>,
 }
 
+/// A temperature sensor device.
 #[derive(Debug)]
 pub struct Temperature<'a> {
     bridge: &'a Bridge,
@@ -216,6 +222,7 @@ impl<'a> Temperature<'a> {
     }
 }
 
+/// Internal representation of a [Temperature].
 #[derive(Clone, Debug, Deserialize)]
 pub struct TemperatureData {
     /// Unique identifier representing a specific resource instance.
@@ -254,6 +261,7 @@ pub struct TemperatureReport {
     pub temperature: f32,
 }
 
+/// A light level detection device.
 #[derive(Debug)]
 pub struct LightLevel<'a> {
     bridge: &'a Bridge,
@@ -286,6 +294,7 @@ impl<'a> LightLevel<'a> {
     }
 }
 
+/// Internal representation of a [LightLevel].
 #[derive(Clone, Debug, Deserialize)]
 pub struct LightLevelData {
     /// Unique identifier representing a specific resource instance.
@@ -328,6 +337,7 @@ pub struct LightLevelReport {
     pub light_level: usize,
 }
 
+/// A virtual device representing the location of the Hue Bridge.
 #[derive(Debug)]
 pub struct Geolocation<'a> {
     bridge: &'a Bridge,
@@ -360,6 +370,7 @@ impl<'a> Geolocation<'a> {
     }
 }
 
+/// Internal representation of the device [Geolocation].
 #[derive(Clone, Debug, Deserialize)]
 pub struct GeolocationData {
     /// Unique identifier representing a specific resource instance.
@@ -395,6 +406,7 @@ pub enum DayType {
     PolarNight,
 }
 
+/// A virtual device representing a location-based trigger.
 #[derive(Debug)]
 pub struct GeofenceClient<'a> {
     bridge: &'a Bridge,
@@ -434,6 +446,7 @@ impl<'a> GeofenceClient<'a> {
     }
 }
 
+/// Internal representation of a [GeofenceClient].
 #[derive(Clone, Debug, Deserialize)]
 pub struct GeofenceClientData {
     /// Unique identifier representing a specific resource instance.
@@ -472,6 +485,7 @@ impl GeofenceClientBuilder {
     }
 }
 
+/// A tamper detection device.
 #[derive(Debug)]
 pub struct Tamper {
     data: TamperData,
@@ -495,6 +509,7 @@ impl Tamper {
     }
 }
 
+/// Internal representation of a [Tamper].
 #[derive(Clone, Debug, Deserialize)]
 pub struct TamperData {
     /// Unique identifier representing a specific resource instance.

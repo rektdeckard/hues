@@ -5,6 +5,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+/// A virtual device that groups services.
 #[derive(Debug)]
 pub struct Zone<'a> {
     bridge: &'a Bridge,
@@ -118,6 +119,7 @@ impl<'a> Zone<'a> {
     }
 }
 
+/// A virtual device that groups services in physical proximity.
 #[derive(Debug, Clone)]
 pub struct Room<'a> {
     bridge: &'a Bridge,
@@ -257,6 +259,7 @@ impl ZoneBuilder {
     }
 }
 
+/// Internal representation of a [Zone] or [Room].
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ZoneData {
     /// Unique identifier representing a specific resource instance.
@@ -339,6 +342,8 @@ pub enum ZoneArchetype {
     Upstairs,
 }
 
+/// A virtual device representing the full tree of devices and services on the
+/// Hue Bridge.
 #[derive(Debug)]
 pub struct Home {
     data: HomeData,
@@ -362,6 +367,7 @@ impl Home {
     }
 }
 
+/// Internal representation of a [Home].
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct HomeData {
     /// Unique identifier representing a specific resource instance.
@@ -372,7 +378,6 @@ pub struct HomeData {
     pub children: Vec<ResourceIdentifier>,
     /// References all services aggregating control and state of children in the group.
     ///
-    /// This includes all services grouped in the group hierarchy given by child relation.
     /// This includes all services of a device grouped in the group hierarchy given by child relation.
     /// Aggregation is per service type, i.e. every service type which can be grouped has a
     /// corresponding definition of grouped type.

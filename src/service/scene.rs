@@ -9,6 +9,9 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
+/// A virtual device representing the collective light states of a
+/// [Room](crate::service::Room), [Zone](crate::service::Zone), or
+/// [Group](crate::service::Group).
 #[derive(Debug, Clone)]
 pub struct Scene<'a> {
     bridge: &'a Bridge,
@@ -132,6 +135,7 @@ impl SceneBuilder {
     }
 }
 
+/// Internal representation of a [Scene].
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SceneData {
     /// Unique identifier representing a specific resource instance.
@@ -285,6 +289,7 @@ pub enum SceneStatus {
     DynamicPalette,
 }
 
+/// A virtual device representing a scheduled collection of [Scene]s.
 #[derive(Debug)]
 pub struct SmartScene<'a> {
     bridge: &'a Bridge,
@@ -345,6 +350,7 @@ impl<'a> SmartScene<'a> {
     // }
 }
 
+/// Internal representation of a [SmartScene].
 #[derive(Clone, Debug, Deserialize)]
 pub struct SmartSceneData {
     /// Unique identifier representing a specific resource instance.

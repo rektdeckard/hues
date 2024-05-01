@@ -5,6 +5,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+/// A virtual device representing a Zigbee connection service.
 #[derive(Debug)]
 pub struct ZigbeeConnectivity<'a> {
     bridge: &'a Bridge,
@@ -44,6 +45,7 @@ impl<'a> ZigbeeConnectivity<'a> {
     }
 }
 
+/// Internal representation of a [ZigbeeConnectivity].
 #[derive(Clone, Debug, Deserialize)]
 pub struct ZigbeeConnectivityData {
     /// Unique identifier representing a specific resource instance.
@@ -69,6 +71,7 @@ impl ZigbeeConnectivityData {
     }
 }
 
+/// A virtual device representing a Zigbee Greeen Power connectivity service.
 #[derive(Debug)]
 pub struct ZGPConnectivity {
     data: ZGPConnectivityData,
@@ -96,6 +99,7 @@ impl ZGPConnectivity {
     }
 }
 
+/// Internal representation of a [ZGPConnectivity].
 #[derive(Clone, Debug, Deserialize)]
 pub struct ZGPConnectivityData {
     /// Unique identifier representing a specific resource instance.
@@ -118,6 +122,7 @@ impl ZGPConnectivityData {
     }
 }
 
+/// A virtual device representing a discoverable service.
 #[derive(Debug)]
 pub struct ZigbeeDeviceDiscovery<'a> {
     bridge: &'a Bridge,
@@ -157,6 +162,7 @@ impl<'a> ZigbeeDeviceDiscovery<'a> {
     }
 }
 
+/// Internal representation of a [ZigbeeDeviceDiscovery].
 #[derive(Clone, Debug, Deserialize)]
 pub struct ZigbeeDeviceDiscoveryData {
     /// Unique identifier representing a specific resource instance.

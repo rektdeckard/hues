@@ -61,6 +61,7 @@ impl<'a> Device<'a> {
     }
 }
 
+/// Internal representation of a [Device].
 #[derive(Clone, Debug, Deserialize)]
 pub struct DeviceData {
     /// Unique identifier representing a specific resource instance.
@@ -102,9 +103,9 @@ pub struct ProductData {
     pub hardware_platform_type: Option<String>,
 }
 
+/// Known classes of compatible products.
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
-/// Known classes of compatible products.
 pub enum ProductArchetype {
     Bollard,
     BridgeV2,
@@ -181,6 +182,7 @@ pub enum UserTestStatus {
     Changing,
 }
 
+/// A virtual device representing the charge state of a device's battery.
 #[derive(Debug)]
 pub struct DevicePower {
     pub data: DevicePowerData,
@@ -212,6 +214,7 @@ impl DevicePower {
     }
 }
 
+/// Internal representation of a [DevicePower].
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DevicePowerData {
     /// Unique identifier representing a specific resource instance.
@@ -253,6 +256,7 @@ pub enum SetStatus {
     Changing,
 }
 
+/// Internal representation of the up-to-dateness of a device's firmware.
 #[derive(Debug, Deserialize)]
 pub struct DeviceSoftwareUpdateData {
     /// Unique identifier representing a specific resource instance.

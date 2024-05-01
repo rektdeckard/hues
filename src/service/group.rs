@@ -6,6 +6,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
+/// A virtual device consisting of a group of lights.
 #[derive(Debug)]
 pub struct Group<'a> {
     bridge: &'a Bridge,
@@ -58,6 +59,7 @@ impl<'a> Group<'a> {
     }
 }
 
+/// Internal representation of a [Group].
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GroupData {
     /// Unique identifier representing a specific resource instance.

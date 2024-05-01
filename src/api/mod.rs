@@ -14,7 +14,7 @@ pub(crate) struct HueAPIResponse<D> {
 #[derive(Debug, Deserialize)]
 pub(crate) struct HueAPIErrorMessage {
     /// A human-readable explanation specific to this occurrence of the problem
-    pub description: String,
+    pub description: serde_json::Value,
 }
 
 /// Possible errors related to communication with the Hue Bridge.
@@ -24,7 +24,7 @@ pub enum HueAPIError {
     BadResponse,
     BadDeserialize,
     NotFound,
-    HueBridgeError(String),
+    HueBridgeError(serde_json::Value),
     ServerSentEvent,
     Streaming,
 }

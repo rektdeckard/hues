@@ -5,6 +5,8 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+/// A static template for scripting behavior that can be instantiated as a
+/// [BehaviorInstance].
 #[derive(Debug)]
 pub struct BehaviorScript {
     data: BehaviorScriptData,
@@ -47,7 +49,7 @@ pub struct BehaviorScriptData {
     pub description: String,
     /// JSON schema object used for validating [BehaviorInstanceData::configuration] property.
     pub configuration_schema: BehaviorSchema,
-    /// JSON schema object used for validating [BehaviorInstanceData::trigger] property.
+    /// JSON schema object used for validating BehaviorInstanceData::trigger property.
     pub trigger_schema: BehaviorSchema,
     /// JSON schema object used for validating [BehaviorInstanceData::state] property.
     pub state_schema: BehaviorSchema,
@@ -107,6 +109,8 @@ pub enum BehaviorScriptType {
 // }
 
 #[derive(Debug)]
+/// An instantiation of a [BehaviorScript] that exectues actions on devices
+/// under given conditions and on given schedules.
 pub struct BehaviorInstance<'a> {
     bridge: &'a Bridge,
     data: BehaviorInstanceData,
@@ -209,6 +213,7 @@ pub enum BehaviorInstanceStatus {
     Errored,
 }
 
+/// Builder structure representing a [BehaviorInstance] that is not yet fully configured.
 #[derive(Serialize)]
 pub struct BehaviorInstanceBuilder {
     script_id: String,

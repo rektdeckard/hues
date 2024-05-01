@@ -2,6 +2,7 @@ use crate::service::{ResourceIdentifier, ResourceType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
+/// A physical button on a device.
 #[derive(Debug)]
 pub struct Button {
     data: ButtonData,
@@ -29,6 +30,7 @@ impl Button {
     }
 }
 
+/// Internal representation of a [Button].
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ButtonData {
     /// Unique identifier representing a specific resource instance.

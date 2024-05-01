@@ -6,6 +6,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
+/// A controllable bulb, strip, or other light device.
 #[derive(Debug)]
 pub struct Light<'a> {
     bridge: &'a Bridge,
@@ -67,6 +68,7 @@ impl<'a> Light<'a> {
     }
 }
 
+/// Internal representation of a [Light].
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LightData {
     /// Unique identifier representing a specific resource instance.
@@ -214,6 +216,8 @@ pub struct CIEGamut {
     pub blue: CIEColor,
 }
 
+/// A [CIE chromaticity](https://en.wikipedia.org/wiki/CIE_1931_color_space#CIE_xy_chromaticity_diagram_and_the_CIE_xyY_color_space)
+/// of a [Light].
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct CIEColor {
     /// X position in color gamut
@@ -344,7 +348,7 @@ impl CIEColor {
     }
 }
 
-/// The gammut types supported by hue
+/// The gamut types supported by hue.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum GamutType {
     /// Gamut of early Philips color-only products

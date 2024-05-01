@@ -143,12 +143,16 @@ impl BridgeClient {
                     if res.errors.is_empty() && res.data.is_some() {
                         Ok(res.data.unwrap())
                     } else {
-                        Err(HueAPIError::HueBridgeError(
-                            res.errors[0].description.clone(),
-                        ))
+                        Err(HueAPIError::HueBridgeError(serde_json::json!(res
+                            .errors
+                            .into_iter()
+                            .map(|e| serde_json::from_str::<serde_json::Value>(
+                                e.description.as_str().unwrap(),
+                            )
+                            .unwrap())
+                            .collect::<Vec<_>>())))
                     }
                 }
-
                 Err(e) => {
                     log::error!("{e}");
                     Err(HueAPIError::BadDeserialize)
@@ -183,13 +187,13 @@ impl BridgeClient {
                                 return Ok(&self.app_key);
                             }
                             RegisterResponse::Error { error } => {
-                                return Err(HueAPIError::HueBridgeError(error.description.clone()))
+                                return Err(HueAPIError::HueBridgeError(serde_json::Value::from(
+                                    error.description,
+                                )))
                             }
                         }
                     }
-                    return Err(HueAPIError::HueBridgeError(
-                        "received no events".to_string(),
-                    ));
+                    return Err(HueAPIError::HueBridgeError("received no events".into()));
                 }
                 _ => Err(HueAPIError::BadDeserialize),
             },
@@ -209,9 +213,9 @@ impl BridgeClient {
             Ok(res) => match res.json::<Vec<super::v1::UnregisterResponse>>().await {
                 Ok(successes_or_errors) => match successes_or_errors.into_iter().next().unwrap() {
                     super::v1::UnregisterResponse::Success(_message) => Ok(()),
-                    super::v1::UnregisterResponse::Error(message) => {
-                        Err(HueAPIError::HueBridgeError(message))
-                    }
+                    super::v1::UnregisterResponse::Error(message) => Err(
+                        HueAPIError::HueBridgeError(serde_json::Value::from(message)),
+                    ),
                 },
                 _ => Err(HueAPIError::BadDeserialize),
             },
