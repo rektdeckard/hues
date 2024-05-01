@@ -39,7 +39,7 @@ cargo add hues
 If you already know your Bridge IP address and have previously created an
 App Key, constructing a client is quick and simple:
 
-```rs
+```rust
 use hues::prelude::*;
 
 #[tokio::main]
@@ -65,7 +65,7 @@ associated function. If you are creating an app for the first time, the
 [Bridge::create_app](service::Bridge::create_app) method initializes new
 credentials that can be used for future authentication.
 
-```rs
+```rust
 use hues::prelude::*
 use std::time::Duration;
 
@@ -95,7 +95,7 @@ async fn main() {
 
 Optionally, you can sync automatically by listening for Server-Sent Events. The bridge will communicate changes as they happen to the client, and you can take action if you choose to do so:
 
-```rs
+```rust
 use hues::prelude::*;
 
 #[tokio::main]
