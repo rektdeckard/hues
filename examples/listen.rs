@@ -18,6 +18,13 @@ async fn main() {
     })
     .await;
 
+    dbg!(bridge
+        .matters()
+        .into_iter()
+        .map(|m| m.data().clone())
+        .collect::<Vec<_>>());
+    std::process::exit(0);
+
     for light in bridge.lights() {
         if light.supports_color() {
             let _ = light
@@ -28,6 +35,4 @@ async fn main() {
         }
         std::thread::sleep(Duration::from_secs(1));
     }
-
-    loop {}
 }
