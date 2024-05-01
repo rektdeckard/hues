@@ -1,6 +1,12 @@
 [package]
 name = "hues"
 version = "0.1.0"
+description = "A Rust client for the Philips Hue API v2"
+authors = ["Tobias Fried <friedtm@gmail.com>"]
+repository = "https://github.com/rektdeckard/hues"
+license = "MIT"
+keywords = ["lighting", "home-automation", "IoT", "smart-home"]
+categories = ["multimedia"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -8,19 +14,6 @@ edition = "2021"
 [lib]
 name = "hues"
 path = "src/lib.rs"
-
-[[bin]]
-name = "hues"
-path = "src/main.rs"
-required-features = ["mdns", "sse", "streaming"]
-
-[[example]]
-name = "all"
-required-features = ["mdns", "sse"]
-
-[[example]]
-name = "listen"
-required-features = ["mdns", "sse"]
 
 [[example]]
 name = "stream"
