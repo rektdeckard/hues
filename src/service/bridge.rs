@@ -1,6 +1,7 @@
+#[cfg(feature = "sse")]
+use crate::event::HueEvent;
 use crate::{
     api::{BridgeClient, HueAPIError, Version},
-    event::HueEvent,
     service::{
         BehaviorInstance, BehaviorInstanceBuilder, BehaviorInstanceData, BehaviorScript,
         BehaviorScriptData, Button, ButtonData, CameraMotion, Contact, ContactData, Device,
@@ -16,7 +17,9 @@ use crate::{
         ZoneBuilder, ZoneData,
     },
 };
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::Deserialize;
+#[cfg(feature = "sse")]
+use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -1659,6 +1662,7 @@ fn upsert_to_cache(
     changes
 }
 
+#[cfg(feature = "sse")]
 fn merge_resource_data<D: DeserializeOwned, S: Serialize>(data: S, patch: serde_json::Value) -> D {
     use json_patch::merge;
     let mut json = serde_json::to_value(data).unwrap();

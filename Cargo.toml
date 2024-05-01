@@ -20,14 +20,14 @@ name = "stream"
 required-features = ["mdns", "sse", "streaming"]
 
 [features]
-default = ["mdns", "sse"]
+default = []
 all = ["mdns", "sse", "streaming"]
 mdns = ["dep:mdns", "dep:futures-util"]
 sse = ["dep:reqwest-eventsource"]
 streaming = ["dep:rustls", "dep:webrtc-dtls", "dep:webrtc-util"]
 
 [dependencies]
-futures-util = { version = "0.3.29", optional = true }
+futures-util = { version = "0.3", optional = true }
 json-patch = "1"
 log = { version = "0.4", features = ["release_max_level_off"] }
 mdns = { version = "3", optional = true }

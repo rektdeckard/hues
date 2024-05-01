@@ -17,11 +17,15 @@ use std::{net::IpAddr, time::Duration};
 /// HUE_APP_KEY="abc123xyz789"
 /// HUE_CLIENT_KEY="ABC123XYZ789" # only required to use "streaming" features
 ///
-/// You may also set the following to real values on your bridge:
-const ROOM_NAME: &'static str = "Office";
+/// You may also set the following to existing resources on your bridge:
+#[allow(dead_code)]
+const ROOM_NAME: &'static str = "Office"; // The name of a real Room resource
+#[allow(dead_code)]
 const ROOM_RENAME: &'static str = "Bat Cave";
-const ZONE_NAME: &'static str = "Fun Zone";
-const SCENE_NAME: &'static str = "Energize";
+#[allow(dead_code)]
+const ZONE_NAME: &'static str = "Fun Zone"; // The name of a real Zone resource
+#[allow(dead_code)]
+const SCENE_NAME: &'static str = "Energize"; // The name of a real Scene resource
 
 #[tokio::main]
 async fn main() {
@@ -52,6 +56,7 @@ async fn main() {
     let _ = set_specific_light_colors(&bridge, "#FF2200").await;
 }
 
+#[allow(dead_code)]
 async fn toggle_room(bridge: &Bridge, name: &str) -> Result<(), HueAPIError> {
     let room = bridge
         .rooms()
@@ -62,6 +67,7 @@ async fn toggle_room(bridge: &Bridge, name: &str) -> Result<(), HueAPIError> {
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn smart_scene_stuff(bridge: &Bridge) -> Result<(), HueAPIError> {
     let _ = bridge
         .delete_smart_scene("becae4e4-faa8-4a39-bc9d-cb16a30241db")
@@ -90,6 +96,7 @@ async fn smart_scene_stuff(bridge: &Bridge) -> Result<(), HueAPIError> {
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn alert_lights(
     bridge: &Bridge,
     c1: impl Into<String>,
@@ -110,6 +117,7 @@ async fn alert_lights(
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn create_zone(
     bridge: &Bridge,
     name: impl Into<String>,
@@ -122,6 +130,7 @@ async fn create_zone(
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn change_room_type(
     bridge: &Bridge,
     name: impl Into<String>,
@@ -141,6 +150,7 @@ async fn change_room_type(
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn rename_room(
     bridge: &Bridge,
     name: impl Into<String>,
@@ -166,6 +176,7 @@ async fn rename_room(
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn recall_scene(bridge: &Bridge, name: impl Into<String>) -> Result<(), HueAPIError> {
     let name = name.into();
     if let Some(scene) = bridge.scenes().iter().find(|sc| sc.name() == &name) {
@@ -182,6 +193,7 @@ async fn recall_scene(bridge: &Bridge, name: impl Into<String>) -> Result<(), Hu
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn delete_scenes(bridge: &Bridge, name: impl Into<String>) -> Result<(), HueAPIError> {
     let name = name.into();
     let ids = bridge
@@ -202,6 +214,7 @@ async fn delete_scenes(bridge: &Bridge, name: impl Into<String>) -> Result<(), H
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn create_scene(bridge: &Bridge, name: impl Into<String>) -> Result<(), HueAPIError> {
     let room = bridge
         .rooms()
@@ -253,6 +266,7 @@ async fn create_scene(bridge: &Bridge, name: impl Into<String>) -> Result<(), Hu
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn rename_scene(bridge: &Bridge) -> Result<Vec<ResourceIdentifier>, HueAPIError> {
     let conc2 = bridge
         .scene("ec1c5855-1c0f-462f-9703-479610af7204")
@@ -266,6 +280,7 @@ async fn rename_scene(bridge: &Bridge) -> Result<Vec<ResourceIdentifier>, HueAPI
         .await
 }
 
+#[allow(dead_code)]
 async fn identify_all_lights(bridge: &Bridge) -> Result<(), HueAPIError> {
     for light in bridge.lights() {
         light.identify().await?;
@@ -273,6 +288,7 @@ async fn identify_all_lights(bridge: &Bridge) -> Result<(), HueAPIError> {
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn randomize_all_lights(bridge: &Bridge) -> Result<(), HueAPIError> {
     let mut rng = rand::thread_rng();
     loop {
@@ -300,6 +316,7 @@ async fn randomize_all_lights(bridge: &Bridge) -> Result<(), HueAPIError> {
     }
 }
 
+#[allow(dead_code)]
 async fn set_specific_light_colors(
     bridge: &Bridge,
     hex: impl Into<String>,
