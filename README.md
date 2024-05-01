@@ -2,7 +2,7 @@
 
 A Rust client for the Philips Hue API v2, with a focus on accuracy to the [official spec](https://developers.meethue.com/develop/hue-api-v2/).
 
-![Crates.io (version)](https://img.shields.io/crates/v/hues.svg?style=flat-square)
+[![Crates.io (version)](https://img.shields.io/crates/v/hues.svg?style=flat-square)](https://crates.io/crates/hues)
 
 [![GitHub stars](https://img.shields.io/github/stars/rektdeckard/hues?style=flat-square&label=Star)](https://github.com/rektdeckard/hues)
 [![GitHub forks](https://img.shields.io/github/forks/rektdeckard/hues?style=flat-square&label=Fork)](https://github.com/rektdeckard/hues/fork)
