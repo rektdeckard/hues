@@ -18,17 +18,10 @@ async fn main() {
     })
     .await;
 
-    dbg!(bridge
-        .matters()
-        .into_iter()
-        .map(|m| m.data().clone())
-        .collect::<Vec<_>>());
-    std::process::exit(0);
-
     for light in bridge.lights() {
         if light.supports_color() {
             let _ = light
-                .send(&[LightCommand::color_from_hex("#220099").unwrap()])
+                .send(&[LightCommand::color_from_hex("#c70709").unwrap()])
                 .await;
         } else {
             let _ = light.identify().await;

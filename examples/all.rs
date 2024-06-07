@@ -40,6 +40,7 @@ async fn main() {
     )
     .poll(Duration::from_secs(30))
     .await;
+    let _ = bridge.refresh().await;
 
     // let _ = toggle_room(&bridge, ROOM_NAME).await;
     // let _ = smart_scene_stuff(&bridge).await;
@@ -53,7 +54,7 @@ async fn main() {
     // let _ = delete_scenes(&bridge, "TEST SCENE").await;
     // let _ = identify_all_lights(&bridge).await;
     // let _ = randomize_all_lights(&bridge).await;
-    let _ = set_specific_light_colors(&bridge, "#FF2200").await;
+    let _ = set_specific_light_colors(&bridge, "#bf07e8").await;
 }
 
 #[allow(dead_code)]
@@ -324,12 +325,9 @@ async fn set_specific_light_colors(
     let mut rng = rand::thread_rng();
     let hex = hex.into();
     for light in bridge.lights() {
-        if light.data().color.is_some() {
+        if light.supports_color() {
             let _ = light
-                .send(&[
-                    LightCommand::color_from_hex(&hex).unwrap(),
-                    // LightCommand::color_from_rgb([228, 86, 136]),
-                ])
+                .send(&[LightCommand::color_from_hex(&hex).unwrap()])
                 .await;
         } else {
             let _ = light

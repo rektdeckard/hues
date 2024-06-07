@@ -1,6 +1,6 @@
 [package]
 name = "hues"
-version = "0.1.0"
+version = "0.1.2"
 description = "A Rust client for the Philips Hue API v2"
 authors = ["Tobias Fried <friedtm@gmail.com>"]
 repository = "https://github.com/rektdeckard/hues"
@@ -18,6 +18,11 @@ path = "src/lib.rs"
 [[example]]
 name = "stream"
 required-features = ["mdns", "sse", "streaming"]
+
+[[example]]
+name = "listen"
+path = "examples/listen.rs"
+required-features = ["mdns", "sse"]
 
 [features]
 default = []

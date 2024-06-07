@@ -165,18 +165,18 @@ impl Bridge {
                                         cb(changes);
                                     }
                                     Err(e) => {
-                                        dbg!(e);
+                                        log::error!("{e}");
                                     }
                                 }
                             }
                             Err(e) => {
-                                dbg!("Error: {}", e);
+                                log::error!("{e}");
                             }
                         }
                     }
                 }
                 Err(e) => {
-                    dbg!(e);
+                    log::error!("{e:?}");
                 }
             }
         };

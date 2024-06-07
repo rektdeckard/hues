@@ -314,20 +314,19 @@ pub enum ZoneArchetype {
     FrontDoor,
     Garage,
     Garden,
-    GuestZone,
+    GuestRoom,
     Gym,
     Hallway,
     Home,
     KidsBedroom,
     Kitchen,
-    LaundryZone,
-    LivingZone,
+    LaundryRoom,
+    LivingRoom,
     Lounge,
     ManCave,
     Music,
     Nursery,
     Office,
-    Other,
     Pool,
     Porch,
     Reading,
@@ -340,6 +339,8 @@ pub enum ZoneArchetype {
     TopFloor,
     Tv,
     Upstairs,
+    #[serde(other)]
+    Other,
 }
 
 /// A virtual device representing the full tree of devices and services on the

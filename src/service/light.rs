@@ -511,13 +511,14 @@ pub struct TimedEffectState {
     /// Resolution decreases for a larger duration. e.g effects with duration smaller than a minute
     /// will be rounded to a resolution of 1s, while effects with duration larger than an hour
     /// will be arounded up to a resolution of 300s. Duration has a max of 21600000 ms.
-    pub duration: usize,
+    pub duration: Option<usize>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TimedEffectType {
     Sunrise,
+    Sunset,
     NoEffect,
 }
 

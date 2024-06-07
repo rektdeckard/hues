@@ -128,7 +128,7 @@ impl BridgeClient {
         body: Option<Body>,
     ) -> Result<Return, HueAPIError>
     where
-        Return: serde::de::DeserializeOwned,
+        Return: serde::de::DeserializeOwned + std::fmt::Debug,
     {
         match self
             .client

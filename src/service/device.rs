@@ -150,13 +150,14 @@ pub enum ProductArchetype {
     TableShade,
     TableWash,
     TriangleBulb,
-    UnknownArchetype,
     VintageBulb,
     VintageCandleBulb,
     WallLantern,
     WallShade,
     WallSpot,
     WallWasher,
+    #[serde(other)]
+    UnknownArchetype,
 }
 #[derive(Clone, Debug, Deserialize)]
 pub struct DeviceMetadata {
