@@ -1939,6 +1939,7 @@ fn delete_from_cache(cache: &mut MutexGuard<'_, BridgeCache>, data: &Vec<Resourc
             ResourceType::Zone => {
                 cache.zones.retain(|id, _| !ids.contains(&id));
             }
+            ResourceType::PrivateGroup => todo!(),
         }
     }
 }

@@ -81,7 +81,7 @@ pub struct LightData {
     pub metadata: LightMetadata,
     pub on: OnState,
     pub dimming: DimmingState,
-    pub color_temperature: ColorTempState,
+    pub color_temperature: Option<ColorTempState>,
     pub color: Option<ColorState>,
     pub dynamics: DynamicsState,
     pub alert: AlertState,
@@ -495,6 +495,10 @@ pub enum EffectType {
     Sparkle,
     Fire,
     Candle,
+    Underwater,
+    Cosmos,
+    Sunbeam,
+    Enchant,
     NoEffect,
 }
 
