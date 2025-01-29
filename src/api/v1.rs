@@ -10,8 +10,10 @@ pub enum RegisterResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterErrorPayload {
+    #[allow(dead_code)]
     #[serde(rename = "type")]
     pub error_type: u16,
+    #[allow(dead_code)]
     pub address: String,
     pub description: String,
 }

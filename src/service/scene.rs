@@ -461,7 +461,11 @@ pub struct SmartSceneTimeslot {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum TimeslotStart {
     Sunset,
-    Time { time: TimeslotTime },
+    Time {
+        time: TimeslotTime,
+    },
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

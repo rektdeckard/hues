@@ -33,6 +33,7 @@ streaming = ["dep:rustls", "dep:webrtc-dtls", "dep:webrtc-util"]
 
 [dependencies]
 futures-util = { version = "0.3", optional = true }
+include_dir = "0.7"
 json-patch = "1"
 log = { version = "0.4", features = ["release_max_level_off"] }
 mdns = { version = "3", optional = true }

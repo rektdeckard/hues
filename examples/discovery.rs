@@ -6,16 +6,20 @@ use std::time::Duration;
 async fn main() {
     dotenv().ok();
 
-    let mut bridge = Bridge::discover()
-        .await
-        .unwrap()
-        .build()
-        .poll(Duration::from_secs(30))
-        .await;
-    let key = bridge.create_app("my_app", "my_instance").await.unwrap();
+    if true {
+        let mut bridge = Bridge::discover()
+            .await
+            .unwrap()
+            .build()
+            .poll(Duration::from_secs(30))
+            .await;
+        println!("{bridge:?}");
+        let key = bridge.create_app("slate", "test_app").await.unwrap();
+        println!("{key}");
 
-    for light in bridge.lights() {
-        let _ = light.identify().await;
+        for light in bridge.lights() {
+            let _ = light.identify().await;
+        }
     }
 
     // KNOWN IP AND APP
@@ -28,6 +32,11 @@ async fn main() {
             // no devices will be populated on the bridge.
             .poll(Duration::from_secs(30))
             .await;
+        let _ = bridge.refresh().await;
+        println!("{:?}", bridge);
+        for light in bridge.lights() {
+            let _ = light.identify().await;
+        }
     }
 
     // DISCOVER BRIDGE WITH EXISTING APP

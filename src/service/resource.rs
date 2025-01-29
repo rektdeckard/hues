@@ -37,6 +37,7 @@ pub enum Resource {
     Matter(MatterData),
     MatterFabric(MatterFabricData),
     Motion(MotionData),
+    PrivateGroup,
     PublicImage,
     RelativeRotary(RelativeRotaryData),
     Room(ZoneData),
@@ -108,4 +109,6 @@ pub enum ResourceType {
     ZigbeeConnectivity,
     ZigbeeDeviceDiscovery,
     Zone,
+    #[serde(other)]
+    Unknown,
 }

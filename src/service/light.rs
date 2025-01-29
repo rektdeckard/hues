@@ -358,7 +358,7 @@ pub enum GamutType {
     /// Richer color gamut of Hue white and color ambiance products
     C,
     /// Color gamut of non-hue products with non-hue gamuts resp w/o gamut
-    #[serde(rename = "other")]
+    #[serde(other, rename = "other")]
     Other,
 }
 
@@ -381,6 +381,8 @@ pub struct DynamicsState {
 pub enum DynamicsStatus {
     DynamicPalette,
     None,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -393,6 +395,8 @@ pub struct AlertState {
 #[serde(rename_all = "snake_case")]
 pub enum AlertEffectType {
     Breathe,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -424,6 +428,8 @@ pub enum SignalType {
     OnOffColor,
     /// Alternates between two provided colors.
     Alternating,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -431,6 +437,8 @@ pub enum SignalType {
 pub enum Mode {
     Normal,
     Streaming,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -473,6 +481,8 @@ pub enum GradientMode {
     InterpolatedPalette,
     InterpolatedPaletteMirrored,
     RandomPixelated,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -500,6 +510,8 @@ pub enum EffectType {
     Sunbeam,
     Enchant,
     NoEffect,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -524,6 +536,8 @@ pub enum TimedEffectType {
     Sunrise,
     Sunset,
     NoEffect,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

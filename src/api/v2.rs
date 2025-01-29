@@ -1292,3 +1292,27 @@ impl BridgeClient {
         self.make_request(url, Method::PUT, Some(payload)).await
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::service::Resource;
+    use include_dir::{include_dir, Dir};
+
+    #[test]
+    fn parse_resources() {
+        static TEST_RESPONSES: Dir = include_dir!("test/fixtures/resource");
+
+        for file in TEST_RESPONSES.files() {
+            let data = file.contents_utf8().unwrap();
+            let parsed: serde_json::Value = serde_json::from_str(&data).unwrap();
+            let data = parsed["data"].as_array().unwrap();
+
+            for resource in data {
+                if let Err(e) = serde_json::from_value::<Resource>(resource.clone()) {
+                    println!("{}", serde_json::to_string_pretty(resource).unwrap());
+                    assert!(false, "Error: {}", e);
+                }
+            }
+        }
+    }
+}

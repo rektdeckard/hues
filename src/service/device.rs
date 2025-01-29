@@ -248,6 +248,8 @@ pub enum BatteryState {
     Normal,
     Low,
     Critical,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
@@ -255,6 +257,8 @@ pub enum BatteryState {
 pub enum SetStatus {
     Set,
     Changing,
+    #[serde(other)]
+    Unknown,
 }
 
 /// Internal representation of the up-to-dateness of a device's firmware.
@@ -276,6 +280,8 @@ pub enum SoftwareUpdateStatus {
     NoUpdate,
     UpdatePending,
     Installing,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
