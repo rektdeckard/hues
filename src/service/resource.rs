@@ -93,6 +93,7 @@ pub enum ResourceType {
     MatterFabric,
     Motion,
     PublicImage,
+    PrivateGroup,
     Recipe,
     RelativeRotary,
     Room,

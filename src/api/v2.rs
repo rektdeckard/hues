@@ -50,7 +50,7 @@ impl BridgeClient {
                 .unwrap(),
             #[cfg(feature = "streaming")]
             root_store: {
-                let cert = CertificateDer::from(include_bytes!("../../hue.pem").to_vec());
+                let cert = CertificateDer::from(include_bytes!("../../hue.der").to_vec());
                 let mut root_store = rustls::RootCertStore::empty();
                 root_store.add(cert).unwrap();
                 root_store
