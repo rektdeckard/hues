@@ -1,6 +1,6 @@
 [package]
 name = "hues"
-version = "0.1.2"
+version = "0.1.3"
 description = "A Rust client for the Philips Hue API v2"
 authors = ["Tobias Fried <friedtm@gmail.com>"]
 repository = "https://github.com/rektdeckard/hues"
