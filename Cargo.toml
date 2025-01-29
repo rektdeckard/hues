@@ -28,7 +28,7 @@ required-features = ["mdns", "sse"]
 default = []
 all = ["mdns", "sse", "streaming"]
 mdns = ["dep:mdns", "dep:futures-util"]
-sse = ["dep:reqwest-eventsource"]
+sse = ["dep:reqwest-eventsource", "dep:futures-util"]
 streaming = ["dep:rustls", "dep:webrtc-dtls", "dep:webrtc-util"]
 
 [dependencies]
