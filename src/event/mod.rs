@@ -1,5 +1,6 @@
 use serde::Deserialize;
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct HueEvent {
     pub id: String,
@@ -19,6 +20,7 @@ pub enum HueEventType {
     Error,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum HueEventData {

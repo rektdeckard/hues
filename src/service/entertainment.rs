@@ -93,6 +93,7 @@ pub enum EntertainmentConfigurationType {
     /// Channels are organized to provide 3d spatial effects.
     #[serde(rename = "3dspace")]
     Space3D,
+    #[serde(other)]
     /// General use-case.
     Other,
 }

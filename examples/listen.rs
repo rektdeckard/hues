@@ -18,6 +18,8 @@ async fn main() {
     })
     .await;
 
+    dbg!(&bridge);
+
     for light in bridge.lights() {
         if light.supports_color() {
             let _ = light

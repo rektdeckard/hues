@@ -404,6 +404,8 @@ pub enum DayType {
     NormalDay,
     PolarDay,
     PolarNight,
+    #[serde(other)]
+    Unknown,
 }
 
 /// A virtual device representing a location-based trigger.

@@ -1897,6 +1897,9 @@ fn delete_from_cache(cache: &mut MutexGuard<'_, BridgeCache>, data: &Vec<Resourc
             ResourceType::Motion => {
                 cache.motions.retain(|id, _| !ids.contains(&id));
             }
+            ResourceType::PrivateGroup => {
+                todo!();
+            }
             ResourceType::PublicImage => {
                 todo!()
             }
@@ -1939,7 +1942,9 @@ fn delete_from_cache(cache: &mut MutexGuard<'_, BridgeCache>, data: &Vec<Resourc
             ResourceType::Zone => {
                 cache.zones.retain(|id, _| !ids.contains(&id));
             }
-            ResourceType::PrivateGroup => todo!(),
+            ResourceType::Unknown => {
+                log::debug!("UNKNOWN RESOURCE: {:?}", res);
+            }
         }
     }
 }

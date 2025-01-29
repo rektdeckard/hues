@@ -97,6 +97,8 @@ pub enum BehaviorScriptType {
     Automation,
     Entertainment,
     Accessory,
+    #[serde(other)]
+    Unknown,
 }
 
 // #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
@@ -202,6 +204,8 @@ pub struct ResourceDependee {
 pub enum ResourceDependeeImportance {
     Critical,
     NonCritical,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -211,6 +215,8 @@ pub enum BehaviorInstanceStatus {
     Running,
     Disabled,
     Errored,
+    #[serde(other)]
+    Unknown,
 }
 
 /// Builder structure representing a [BehaviorInstance] that is not yet fully configured.

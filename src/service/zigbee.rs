@@ -189,6 +189,8 @@ impl ZigbeeDeviceDiscoveryData {
 pub enum ZigbeeDeviceDiscoveryStatus {
     Active,
     Ready,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
@@ -202,6 +204,8 @@ pub enum ZigbeeStatus {
     ConnectivityIssue,
     /// The device only talks to bridge.
     UnidirectionalIncoming,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Debug, Deserialize)]
