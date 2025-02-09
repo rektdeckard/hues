@@ -25,7 +25,7 @@
 //! If you already know your Bridge IP address and have previously created an
 //! App Key, constructing a client is quick and simple:
 //!
-//! ```
+//! ```no_run
 //! use hues::prelude::*;
 //!
 //! #[tokio::main]
@@ -51,8 +51,8 @@
 //! [Bridge::create_app](service::Bridge::create_app) method initializes new
 //! credentials that can be used for future authentication.
 //!
-//! ```
-//! use hues::prelude::*
+//! ```no_run
+//! use hues::prelude::*;
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
@@ -83,14 +83,14 @@
 //! The bridge will communicate changes as they happen to the client, and you
 //! can take action if you choose to do so:
 //!
-//! ```
+//! ```no_run
 //! use hues::prelude::*;
 //!
 //! #[tokio::main]
-//! async main() -> Result<(), HueAPIError> {
+//! async fn main() {
 //!     let bridge = Bridge::new([10u8, 0, 0, 123], "my_app_key").listen(|_rids| {
 //!         // Do something whenever changes are sent from the Bridge
-//!     });
+//!     }).await;
 //! }
 //! ```
 

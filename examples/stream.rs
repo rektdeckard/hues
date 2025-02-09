@@ -1,7 +1,7 @@
 use dotenv::dotenv;
 use hues::{
     command::EntertainmentConfigurationCommand,
-    service::{Bridge, ResouceType},
+    service::{Bridge, ResourceType},
 };
 use std::{net::IpAddr, time::Duration};
 
