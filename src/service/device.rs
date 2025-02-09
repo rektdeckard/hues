@@ -280,6 +280,7 @@ pub enum SoftwareUpdateStatus {
     NoUpdate,
     UpdatePending,
     Installing,
+    ReadyToInstall,
     #[serde(other)]
     Unknown,
 }
