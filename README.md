@@ -66,7 +66,7 @@ associated function. If you are creating an app for the first time, the
 credentials that can be used for future authentication.
 
 ```rust
-use hues::prelude::*
+use hues::prelude::*;
 use std::time::Duration;
 
 #[tokio::main]
@@ -99,10 +99,11 @@ Optionally, you can sync automatically by listening for Server-Sent Events. The 
 use hues::prelude::*;
 
 #[tokio::main]
-async main() -> Result<(), HueAPIError> {
+async fn main() -> Result<(), HueAPIError> {
     let bridge = Bridge::new([10u8, 0, 0, 123], "my_app_key").listen(|_rids| {
         // Do something whenever changes are sent from the Bridge
     });
+    Ok(())
 }
 ```
 
