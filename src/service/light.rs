@@ -80,13 +80,13 @@ pub struct LightData {
     #[deprecated = "use metadata on device level"]
     pub metadata: LightMetadata,
     pub on: OnState,
-    pub dimming: DimmingState,
+    pub dimming: Option<DimmingState>,
     pub color_temperature: Option<ColorTempState>,
     pub color: Option<ColorState>,
     pub dynamics: DynamicsState,
     pub alert: AlertState,
     /// Feature containing signaling properties.
-    pub signaling: SignalingState,
+    pub signaling: Option<SignalingState>,
     pub mode: Mode,
     /// Basic feature containing gradient properties.
     pub gradient: Option<GradientState>,
