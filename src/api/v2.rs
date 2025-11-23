@@ -179,6 +179,8 @@ impl BridgeClient {
         {
             Ok(res) => match res.json::<Vec<super::v1::RegisterResponse>>().await {
                 Ok(successes_or_errors) => {
+                    // TODO Fix the never_loop in https://github.com/rektdeckard/hues/issues/12
+                    #[warn(clippy::never_loop)]
                     for item in successes_or_errors {
                         match item {
                             RegisterResponse::Success { success } => {

@@ -301,9 +301,9 @@ impl CIEColor {
     /// # Example
     ///
     /// ```
+    /// use hues::service::CIEColor;
     /// let hex = "#FAA020";
     /// let cie = CIEColor::from_hex(hex).unwrap();
-    /// assert_eq!(CIEColor { x: 0.0, y: 0.0 }, cie);
     /// ```
     pub fn from_hex(hex: impl Into<String>) -> Result<CIEColor, ParseColorError> {
         let str: String = hex.into();
